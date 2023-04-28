@@ -3,7 +3,6 @@ import queue
 import threading as th
 from typing import Type, Any
 import pandas as pd
-from astropy.table import Table
 import astropy.io.fits as fits
 from abc import ABC, abstractmethod
 
