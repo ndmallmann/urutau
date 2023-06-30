@@ -1,88 +1,21 @@
+"""
+    Urutau, a module based pipeline.
+"""
+
 import os
 import queue
 import threading as th
-from typing import Type, Any
-import pandas as pd
+from typing import Type
+
 import astropy.io.fits as fits
-from abc import ABC, abstractmethod
+import pandas as pd
 
-
-class UrutauModule(ABC):
-
-    name: str = "MOCK"
-
-    def __init__(self, **kwargs) -> None:
-        self._config = dict()
-        self._init_config = dict()
-        self._default_config = dict()
-
-        self._save_init_config_parameters(**kwargs)
-        self._set_init_default_parameters()
-
-        self._config = self._default_config.copy()
-        self.setup(**self._init_config)
-
-    @ property
-    def default_parameters(self) -> dict:
-        """
-            Default parameters for the module.
-        """
-        return self._default_config
-
-    @ property
-    def received_config(self) -> dict:
-        """
-            Initial parameters (used during object creation).
-        """
-        return self._init_config
-
-    @ property
-    def config(self) -> dict:
-        """
-            Current parameters being used.
-        """
-        return self._config
-
-    def __getitem__(self, key: str) -> Any:
-        return self._config[key]
-
-    def setup(self, **kwargs) -> None:
-        """
-            Modify the default configuration values for the module.
-        """
-
-        for key, value in kwargs.items():
-            if key in self._config:
-                self._config[key] = value
-
-    def reset_parameters(self) -> None:
-        """
-            Resets all parameter values to the ones used during object creation.
-        """
-        self._config.clear()
-        self._set_init_default_parameters()
-        self.setup(**self._init_config)
-
-    def _save_init_config_parameters(self, **kwargs) -> None:
-        """
-            Should only be called by the init method during object creation.
-        """
-        self._init_config.update(kwargs)
-
-    @ abstractmethod
-    def _set_init_default_parameters(self) -> None:
-        pass
-
-    @ abstractmethod
-    def execute(self, target_file: str) -> fits.FitsHDU:
-        """
-            Execute the module and update the fits_file.
-        """
+from .modules._module_base import AbstractModule
 
 
 class Urutau:
     """
-        Urutau is a module based software.
+        Urutau is a module based pipeline.
     """
 
     def __init__(self) -> None:
@@ -98,7 +31,7 @@ class Urutau:
 
         self._jobs = queue.Queue()
 
-    def set_modules(self, modules: list[Type[UrutauModule]]) -> None:
+    def set_modules(self, modules: list[Type[AbstractModule]]) -> None:
         """
             Set modules list to be executed.
 
@@ -111,7 +44,7 @@ class Urutau:
         self._modules = modules.copy()
         self._modules_configs.clear()
 
-    def config_module(self, module: Type[UrutauModule], configuration: dict) -> None:
+    def config_module(self, module: Type[AbstractModule], configuration: dict) -> None:
         """
             Set initial configuration for module.
         """
@@ -252,11 +185,11 @@ class Urutau:
         self._targets.clear()
         self._executing = False
 
-    def read_csv(self, target_dir: str, csv_file: str) -> None:
+    def read_csv(self, targets_dir: str, csv_file: str) -> None:
         """
             Reads a csv file with the targets and their specific configurations.
 
-            target_dir: folder path containing the targets
+            targets_dir: folder path containing the targets
             csv_file: column named "target" is used to identify the targets (otherwise, the first column is used)
         """
 
@@ -278,17 +211,20 @@ class Urutau:
             target_property = columns_list[0]
             properties = columns_list[1:]
 
-        targets = [os.path.join(target_dir, x) for x in targets_names]
+        targets = [os.path.join(targets_dir, x) for x in targets_names]
         self.load_targets(targets)
 
-        spec_config = {os.path.join(target_dir, row[target_property]): row[properties].to_dict(
-        ) for (_, row) in csv_df.iterrows()}
+        spec_config = {
+            os.path.join(targets_dir, row[target_property]):
+            row[properties].to_dict() for (_, row) in csv_df.iterrows()
+        }
         self.load_target_specific_parameters(spec_config)
 
     def _worker_task(self, save_path_root: str, save_config: bool, debug: bool) -> None:
 
         while True:
 
+            # Verify if the jobs queue is not empty
             try:
                 target = self._jobs.get(False)
             except queue.Empty:
@@ -296,8 +232,7 @@ class Urutau:
 
             final_target_name = self._final_save_path(save_path_root, target)
 
-            with fits.open(target) as old_file:
-                old_file.writeto(final_target_name, overwrite=True)
+            orig_file_data = fits.open(target)
 
             final_configuration = dict()
 
@@ -305,22 +240,26 @@ class Urutau:
 
                 config_parameters = dict()
 
+                # Config priority order:
+                #       module -> default targets -> specific target
                 if next_module in self._modules_configs:
                     config_parameters.update(
                         self._modules_configs[next_module])
 
+                config_parameters.update(self._default_parameters.copy())
+
                 if target in self._specific_parameters:
                     config_parameters.update(self._specific_parameters[target])
 
-                config_parameters.update(self._default_parameters.copy())
                 loaded_module = next_module(**config_parameters)
 
                 if debug:
                     self._debug_message_parameters(loaded_module)
 
-                next_hdu = loaded_module.execute(final_target_name)
+                # Execute module
+                next_hdu_list = loaded_module.execute(orig_file_data)
 
-                self._update_result_file(final_target_name, next_hdu)
+                self._update_result_file(orig_file_data, next_hdu_list)
 
                 final_configuration.update(loaded_module.config)
 
@@ -330,15 +269,15 @@ class Urutau:
 
             if save_config:
                 config_hdu = self._generate_config_hdu(final_configuration)
-                self._update_result_file(final_target_name, config_hdu)
+                self._update_result_file(orig_file_data, config_hdu)
+
+            orig_file_data.writeto(final_target_name, overwrite=True)
 
             self._jobs.task_done()
 
-    def _update_result_file(self, target, hdu):
-        with fits.open(target) as old_file:
-            old_file = fits.open(target)
-            old_file.append(hdu)
-            old_file.writeto(target, overwrite=True)
+    def _update_result_file(self, data: fits.HDUList, new_data: fits.HDUList) -> None:
+        for hdu in new_data:
+            data.append(hdu)
 
     def _final_save_path(self, save_path_root, target):
         target_base_name = os.path.basename(target)
@@ -346,7 +285,9 @@ class Urutau:
         save_path = os.path.join(save_path_root, file_name)
         return save_path
 
-    def _generate_config_hdu(self, configuration: dict) -> fits.FitsHDU:
+    def _generate_config_hdu(self, configuration: dict) -> fits.HDUList:
+        hdu_list = fits.HDUList()
+
         config_hdu = fits.ImageHDU()
         header = config_hdu.header
 
@@ -355,19 +296,21 @@ class Urutau:
         index_par = 0
         for key, value in configuration.items():
             card = fits.Card(
-                keyword=f"CFGP{index_par}", value=value, comment=key)
+                keyword=f"CFGP{index_par}", value=str(value), comment=key)
             header.append(card=card)
             index_par += 1
 
         header.add_comment("Urutau Config Parameters")
 
-        return config_hdu
+        hdu_list.append(config_hdu)
+
+        return hdu_list
 
     def _debug_message_final_configuration(self, target: str, final_configuration: dict) -> None:
         message = f"\n>>> Target {target}\n___ Final Configuration: {final_configuration}"
         print(message)
 
-    def _debug_message_parameters(self, loaded_module: UrutauModule) -> None:
+    def _debug_message_parameters(self, loaded_module: AbstractModule) -> None:
         print(f"\n>>> Module Loaded: {loaded_module.name}")
         print(f"___ Default Par: {loaded_module.default_parameters}")
         print(f"___ Received Par: {loaded_module.received_config}")
