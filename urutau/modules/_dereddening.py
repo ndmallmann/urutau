@@ -16,9 +16,9 @@ class GenericDereddening(AbstractModule, ABC):
         Generic module to apply a dereddening law.
 
         Default Urutau Parameters:
-            - "hdu flux" = Name of the hdu extension with flux data (3D matrix)
-            - "ebv" = E(B-V) value for the target galaxy's angular position
-            - "rv" = Galactic Rv parameter
+            - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
+            - "ebv" = E(B-V) value for the target galaxy's angular position (default = 0)
+            - "rv" = Galactic Rv parameter (default = 3.1)
 
         Resulting Extension Name = "FLUX_DRD"
 
@@ -84,9 +84,9 @@ class CcmLaw(GenericDereddening):
         Module that applies CCM's dereddening (Galactic).
 
         Default Urutau Parameters:
-            - "hdu flux" = Name of the hdu extension with flux data (3D matrix)
-            - "ebv" = E(B-V) value for the target galaxy's angular position
-            - "rv" = Galactic Rv parameter
+            - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
+            - "ebv" = E(B-V) value for the target galaxy's angular position (default = 0)
+            - "rv" = Galactic Rv parameter (default = 3.1)
 
         Resulting Extension Name = "FLUX_DRD"
 
@@ -149,9 +149,9 @@ class SeatonLaw(GenericDereddening):
         Module that applies Seaton's dereddening (Galactic).
 
         Default Urutau Parameters:
-            - "hdu flux" = Name of the hdu extension with flux data (3D matrix)
-            - "ebv" = E(B-V) value for the target galaxy's angular position
-            - "rv" = Galactic Rv parameter
+            - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
+            - "ebv" = E(B-V) value for the target galaxy's angular position (default = 0)
+            - "rv" = Galactic Rv parameter (default = 3.1)
 
         Resulting Extension Name = "FLUX_DRD"
 

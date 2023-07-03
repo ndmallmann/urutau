@@ -10,8 +10,9 @@ import astropy.io.fits as fits
 
 class AbstractModule(ABC):
     """
-        Abstract Module for Urutau.
         All urutau modules should derive from this one.
+
+        This is an abstract module and Urutau can't used it directly.
     """
 
     name: str = "MOCK"

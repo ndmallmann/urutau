@@ -13,9 +13,9 @@ class ButterworthFilter(AbstractModule):
         Module to apply a 2D butterworth along the z axis of a datacube HDU.
 
         Default Urutau Parameters:
-            - "hdu flux" = hdu name with flux data
-            - "order" = butterworth order
-            - "range" = butterworth range
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "order" = butterworth order (default = 3)
+            - "range" = butterworth range (default = 0.3)
 
         Resulting Extension Name = "FLUX_BW"
     """

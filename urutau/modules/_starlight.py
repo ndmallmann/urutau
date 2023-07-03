@@ -14,20 +14,21 @@ class StarlightOnUrutau(AbstractModule):
         Starlight module for urutau.
 
         Default Urutau Parameters:
-            - "starlight path" = path for starlight's executable
-            - "hdu flux" = hdu name with flux data
-            - "galaxy distance" = galaxy distance in Mpc
-            - "population ages" = population age limits
-            - "default grid file" = reference grid file
-            - "hdu ivar" = [Optional] hdu name with inverse variance data
-            - "hdu error" = [Optional] hdu name with error data
-            - "hdu flag" = [Optional] hdu name with mask data
-            - "redshift" = [Optional] redshift (for correction)
-            - "normalization factor" = [Optional] flux's normalization value
-            - "flux unit" = [Optional] flux unit's unit
-            - "keep tmp" = [Optional] keep temp files (True) or not (False)
+            - "starlight path" = path for starlight's executable (default = "")
+            - "default grid file" = reference grid file (default = "")
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "galaxy distance" = galaxy distance in Mpc (default = 0.)
+            - "population ages" = population age limits (default = {"x": [0, 13E9]})
+            - "hdu ivar" = [Optional] hdu name with inverse variance data (default = None)
+            - "hdu error" = [Optional] hdu name with error data (default = None)
+            - "hdu flag" = [Optional] hdu name with mask data (default = None)
+            - "redshift" = [Optional] redshift (for correction) (default = 0.)
+            - "normalization factor" = [Optional] flux's normalization value (default = 1.)
+            - "flux unit" = [Optional] flux unit's unit (default = "")
+            - "keep tmp" = [Optional] keep temp files (True) or not (False) (default = False)
 
-        Resulting Extension Name = "POPBINS"
+        Resulting Extension Names = "BaseAgeMetal", "POPBINS", "PopVecsL",
+            "PopVecsM", "FLXOBS", "FLXSYN", "WEIGHT"
 
         Obs:
             population ages is a dictionary containing tuples with min and max

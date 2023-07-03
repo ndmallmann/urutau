@@ -15,9 +15,9 @@ class Resampler(AbstractModule):
         Abstract data resampler module for Urutal.
 
         Default Urutau Parameters:
-            - "hdu list" = List of hdu extensions to be resampled (3D matrix)
-            - "data types list" = List of data types of each hdu (respectively)
-            - "resample size" = Number of pixels used per sample
+            - "hdu list" = List of hdu extensions to be resampled (3D matrix) (default = ["FLUX"])
+            - "data types list" = List of data types of each hdu (respectively) (default = ["flux"])
+            - "resample size" = Number of pixels used per sample (default = 4)
 
         Obs:
             data types list must be of same size as hdu list

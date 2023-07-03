@@ -13,13 +13,16 @@ class SignalToNoiseMask(AbstractModule):
         Module to generate signal to noise maps based on threshold values.
 
         Default Urutau Parameters:
-            - "hdu flux" = hdu name with flux data
-            - "hdu var" = hdu name with variance data
-            - "hdu ivar" = hdu name with inverse variance data
-            - "hdu error" = hdu name with error data
-            - "sn window" = signal to noise window Ex: (4020, 4050)
-            - "thresholds" = list of signal to noise thresholds
-            - "redshift" = redshift of the object
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "hdu var" = hdu name with variance data (default = None)
+            - "hdu ivar" = hdu name with inverse variance data (default = None)
+            - "hdu error" = hdu name with error data (default = None)
+            - "sn window" = signal to noise window (default = [4000, 6000])
+            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "redshift" = redshift of the object (default = 0.)
+
+        Resulting Extension Names = "SN_MASKS_X",
+            where X is the threshold value
 
         Obs:
             the module will use either var, ivar or error. Only one will be
@@ -34,9 +37,6 @@ class SignalToNoiseMask(AbstractModule):
             - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
             - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
             - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
-
-        Resulting Extension Names = "SN_MASKS_X",
-            where X is the threshold value
     """
 
     name = "SN Masks"

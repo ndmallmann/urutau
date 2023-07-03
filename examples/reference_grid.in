@@ -1,0 +1,16 @@
+1                                                     [Number of fits to run]
+/home/username/starlight/base/                        [base_dir]
+/home/username/starlight/tmp_obs/                     [obs_dir]
+/home/username/starlight/mask/                        [mask_dir]
+/home/username/starlight/output/                      [out_dir]
+123456                                                [your phone number]
+5350.0                                                [llow_SN]   lower-lambda of S/N window
+5450.0                                                [lupp_SN]   upper-lambda of S/N window
+3700.0                                                [Olsyn_ini] lower-lambda for fit
+6930.0                                                [Olsyn_fin] upper-lambda for fit
+1.0                                                   [Odlsyn]    delta-lambda for fit
+1.0                                                   [fscale_chi2] fudge-factor for chi2
+FIT                                                   [FIT/FXK] Fit or Fix kinematics
+0                                                     [IsErrSpecAvailable]  1/0 = Yes/No
+0                                                     [IsFlagSpecAvailable] 1/0 = Yes/No
+mock_input.spec   StCv04.C11.config   BaseGMManga   Mask.0414.51901.393.cxt.sc1.CRAP.gm.BN   CCM   0.0   150.0   mock_output.spec
