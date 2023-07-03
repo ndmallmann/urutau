@@ -6,6 +6,9 @@ Home-page: UNKNOWN
 Author: Nicolas Dullius Mallmann
 License: UNKNOWN
 Platform: UNKNOWN
+Requires: astropy
+Requires: pandas
+Requires: scipy
 Requires-Python: >=3.10
 
 UNKNOWN
