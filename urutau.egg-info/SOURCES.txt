@@ -1,7 +1,7 @@
+README.md
 setup.py
 src/__init__.py
 src/_urutau.py
-src/test_modules.py
 src/modules/__init__.py
 src/modules/_dereddening.py
 src/modules/_filters.py
