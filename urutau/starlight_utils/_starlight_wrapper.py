@@ -450,13 +450,7 @@ class StarlightGeneric(StarlightWrapper):
         name = "FLXOBS"
         summary = "Observed Flux (STARLIGHT output) in input units"
 
-        init_wave = self._grid_generator.parameters.olsyn_ini
-        d_wave = self._grid_generator.parameters.odlsyn
-
-        cards = list()
-        cards.append(fits.Card("CRPIX3", 1))
-        cards.append(fits.Card("CRVAL", init_wave))
-        cards.append(fits.Card("CD3_3", d_wave))
+        cards = self._wavelength_info_cards()
 
         unit_comment = "Unit"
         cards.append(fits.Card("BUNIT", self._flux_unit, unit_comment))
@@ -470,13 +464,7 @@ class StarlightGeneric(StarlightWrapper):
         name = "FLXSYN"
         summary = "Synthetic Flux (STARLIGHT output) in input units"
 
-        init_wave = self._grid_generator.parameters.olsyn_ini
-        d_wave = self._grid_generator.parameters.odlsyn
-
-        cards = list()
-        cards.append(fits.Card("CRPIX3", 1))
-        cards.append(fits.Card("CRVAL", init_wave))
-        cards.append(fits.Card("CD3_3", d_wave))
+        cards = self._wavelength_info_cards()
 
         unit_comment = "Unit"
         cards.append(fits.Card("BUNIT", self._flux_unit, unit_comment))
@@ -490,13 +478,7 @@ class StarlightGeneric(StarlightWrapper):
         name = "WEIGHT"
         summary = "Weight used in the fits (STARLIGHT output)"
 
-        init_wave = self._grid_generator.parameters.olsyn_ini
-        d_wave = self._grid_generator.parameters.odlsyn
-
-        cards = list()
-        cards.append(fits.Card("CRPIX3", 1))
-        cards.append(fits.Card("CRVAL", init_wave))
-        cards.append(fits.Card("CD3_3", d_wave))
+        cards = self._wavelength_info_cards()
 
         hdu_data = self._array_matrix(lambda x: x.wei)
         self._add_hdu(name, summary, cards, hdu_data)
@@ -758,6 +740,16 @@ class StarlightGeneric(StarlightWrapper):
         sfr_value = np.sum(sl_out.m_ini_j[age_index]) * m_total_factor
 
         return sfr_value
+
+    def _wavelength_info_cards(self):
+        init_wave = self._grid_generator.parameters.olsyn_ini
+        d_wave = self._grid_generator.parameters.odlsyn
+
+        cards = list()
+        cards.append(fits.Card("CRPIX3", 1))
+        cards.append(fits.Card("CRVAL3", init_wave))
+        cards.append(fits.Card("CD3_3", d_wave))
+        return cards
 
     def _redshifted_wave_array(self, flux_header: fits.Header, z_size: int) -> np.ndarray:
 
