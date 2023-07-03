@@ -10,5 +10,5 @@ setup(
     packages=find_packages(),
     author="Nicolas Dullius Mallmann",
     python_requires=">=3.10",
-    requires=["astropy", "pandas", "scipy"]
+    install_requires=["astropy", "pandas", "scipy"]
 )

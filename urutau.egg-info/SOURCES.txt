@@ -5,6 +5,7 @@ urutau/_urutau.py
 urutau.egg-info/PKG-INFO
 urutau.egg-info/SOURCES.txt
 urutau.egg-info/dependency_links.txt
+urutau.egg-info/requires.txt
 urutau.egg-info/top_level.txt
 urutau/modules/__init__.py
 urutau/modules/_dereddening.py
