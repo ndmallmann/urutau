@@ -453,7 +453,7 @@ class StarlightGeneric(StarlightWrapper):
         cards = self._wavelength_info_cards()
 
         unit_comment = "Unit"
-        cards.append(fits.Card("BUNIT", self._flux_unit, unit_comment))
+        cards.append(fits.Card("BUNIT", 1, unit_comment))
 
         hdu_data = self._array_matrix(
             lambda x: x.f_obs * x.fobs_norm * self._norm_factor
@@ -467,7 +467,7 @@ class StarlightGeneric(StarlightWrapper):
         cards = self._wavelength_info_cards()
 
         unit_comment = "Unit"
-        cards.append(fits.Card("BUNIT", self._flux_unit, unit_comment))
+        cards.append(fits.Card("BUNIT", 1, unit_comment))
 
         hdu_data = self._array_matrix(
             lambda x: x.f_syn * x.fobs_norm * self._norm_factor

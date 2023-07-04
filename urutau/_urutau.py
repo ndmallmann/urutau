@@ -296,7 +296,7 @@ class Urutau:
         index_par = 0
         for key, value in configuration.items():
             card = fits.Card(
-                keyword=f"CFGP{index_par}", value=str(value), comment=key)
+                keyword=f"CFGP{index_par}", value=key, comment=str(value))
             header.append(card=card)
             index_par += 1
 
