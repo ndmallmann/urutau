@@ -7,6 +7,8 @@ import numpy as np
 
 from ._module_base import AbstractModule
 
+# TODO: Add functionality to calculate signal to noise without var, error or ivar.
+
 
 class SignalToNoiseMask(AbstractModule):
     """
@@ -25,12 +27,15 @@ class SignalToNoiseMask(AbstractModule):
             where X is the threshold value
 
         Obs:
-            the module will use either var, ivar or error. Only one will be
-            used (in this order of priority: error > ivar > var)
+            the module will use either var, ivar, or error. If the user
+            provides none of the options, the map will be generated using
+            the mean and standard deviation of the flux on the sn window.
+
+            if the user provides more than one options ("hdu var", "hdu ivar",
+            "hdu error"), the module will prioritize one of them in this order:
+            error > ivar > var.
 
             each threshold value generates an HDU extension.
-
-            if no redshift is given, uses default of 0 (effect is correction).
 
         Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
         following header parameters:
@@ -80,7 +85,7 @@ class SignalToNoiseMask(AbstractModule):
             mean_sqrt_ivar = np.mean(sqrt_ivar_cut, axis=0)
 
             sn_ratio_map = mean_flux * np.sqrt(mean_sqrt_ivar)
-        else:
+        elif not (self["hdu var"] is None):
             sqrt_var_data = np.sqrt(input_hdu[self["hdu var"]].data)
             sqrt_var_cut = sqrt_var_data[left_index:right_index, :, :]
             mean_sqrt_var = np.mean(sqrt_var_cut, axis=0)
@@ -88,6 +93,12 @@ class SignalToNoiseMask(AbstractModule):
             good_ind = mean_sqrt_var > 0
             sn_ratio_map[good_ind] = mean_flux[good_ind] / \
                 mean_sqrt_var[good_ind]
+        else:
+            flux_at_window = flux_data[left_index:right_index, :, :]
+            mean_at_window = np.nanmean(flux_at_window, axis=0)
+            std_deviation_map = np.nanstd(flux_at_window, axis=0)
+
+            sn_ratio_map = mean_at_window / std_deviation_map
 
         hdus_list = fits.HDUList()
 
