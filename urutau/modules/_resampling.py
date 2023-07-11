@@ -15,15 +15,13 @@ class Resampler(AbstractModule):
         Abstract data resampler module for Urutal.
 
         Default Urutau Parameters:
-            - "hdu list" = List of hdu extensions to be resampled (3D matrix) (default = ["FLUX"])
-            - "data types list" = List of data types of each hdu (respectively) (default = ["flux"])
+            - "hdu target" = hdu extension to be resampled (default = "FLUX")
+            - "data type" = data types of the hdu (default = "flux")
             - "resample size" = Number of pixels used per sample (default = 4)
 
         Obs:
-            data types list must be of same size as hdu list
-
-            data types are "flux", "inv_flux", "error", "inv_error", "variance"
-            "inv_variance"
+            data types are "flux", "inv_flux", "error", "inv_error",
+            "variance", and "inv_variance"
 
         Resulting Extension Name = "X_RSP", where X is the
             original extension name
@@ -32,26 +30,20 @@ class Resampler(AbstractModule):
     name = "Resampler"
 
     def _set_init_default_parameters(self) -> None:
-        self.default_parameters["hdu list"] = ["FLUX"]
-        self.default_parameters["data types list"] = ["flux"]
+        self.default_parameters["hdu target"] = "FLUX"
+        self.default_parameters["data type"] = "flux"
         self.default_parameters["resample size"] = 4
 
     def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
-        hdu_list = self["hdu list"]
-        type_list = self["data types list"]
+        hdu = self["hdu target"]
+        type_data = self["data type"]
 
-        new_hdus = fits.HDUList()
+        header = input_hdu[hdu].header
+        data = input_hdu[hdu].data
 
-        for index, res_hdu in enumerate(hdu_list):
-            res_type = type_list[index]
+        new_hdu = self._resample_hdu_data(header, data, type_data)
 
-            header = input_hdu[res_hdu].header
-            data = input_hdu[res_hdu].data
-
-            new_hdu = self._resample_hdu_data(header, data, res_type)
-            new_hdus.append(new_hdu)
-
-        return new_hdus
+        return fits.HDUList(hdus=[new_hdu])
 
     def _resample_hdu_data(self, header: fits.Header, data: np.ndarray, data_type: str) -> fits.FitsHDU:
         z_size, y_size, x_size = data.shape

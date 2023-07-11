@@ -13,177 +13,82 @@ import pandas as pd
 from .modules._module_base import AbstractModule
 
 
+class ModuleContainer:
+
+    def __init__(self, module: Type[AbstractModule], config: dict) -> None:
+        self._module = module
+        self._config = config
+
+    def get_module(self) -> Type[AbstractModule]:
+        return self._module
+
+    def get_config(self) -> dict:
+        return self._config.copy()
+
+    def loaded_module(self, target_config: dict = None) -> AbstractModule:
+        if target_config is None:
+            target_config = dict()
+
+        config_copy = self._config.copy()
+        config_copy.update(target_config)
+
+        loaded_module = self._module(**config_copy)
+
+        return loaded_module
+
+
+class TargetContainer:
+
+    def __init__(self, target: str, config: dict = None) -> None:
+        self._target = target
+        self._config = dict() if config is None else config
+
+    def get_target(self) -> str:
+        return self._target
+
+    def get_config(self) -> dict:
+        return self._config.copy()
+
+
 class Urutau:
     """
         Urutau is a module based pipeline.
     """
 
-    def __init__(self) -> None:
-        self._modules = list()
-        self._targets = list()
+    def __init__(self, num_threads: int = 1) -> None:
+        self._module_containers: list[ModuleContainer] = list()
+        self._target_containers: list[TargetContainer] = list()
 
-        self._modules_configs = dict()
-        self._default_parameters = dict()
-        self._specific_parameters = dict()
+        self._num_threads = int(num_threads) if num_threads > 1 else 1
+        self._jobs: queue.Queue[TargetContainer] = queue.Queue()
 
-        self._num_procs = 1
         self._executing = False
 
-        self._jobs = queue.Queue()
-
-    def set_modules(self, modules: list[Type[AbstractModule]]) -> None:
+    def add_module(self, module: AbstractModule, config: dict = None) -> None:
         """
-            Set modules list to be executed.
-
-            Replaces old list and clears module configs.
+            Add module at the end of the execution list.
         """
 
         if self._executing:
             return
 
-        self._modules = modules.copy()
-        self._modules_configs.clear()
+        module_cfg = dict() if config is None else config
+        module_container = ModuleContainer(module, module_cfg)
 
-    def config_module(self, module: Type[AbstractModule], configuration: dict) -> None:
+        self._module_containers.append(module_container)
+
+    def add_target(self, target: str, config: dict = None) -> None:
         """
-            Set initial configuration for module.
-        """
-
-        if self._executing:
-            return
-
-        self._modules_configs[module] = configuration
-
-    def clear_targets(self) -> None:
-        """
-            Clear current target list.
+            Add target to the list.
         """
 
         if self._executing:
             return
 
-        self._targets.clear()
+        target_cfg = dict() if config is None else config
+        target_container = TargetContainer(target, target_cfg)
 
-    def clear_default_parameters(self) -> None:
-        """
-            Clear current default parameters.
-        """
-
-        if self._executing:
-            return
-
-        self._default_parameters.clear()
-
-    def clear_target_specific_parameters(self) -> None:
-        """
-            Clear current specific parameters.
-        """
-
-        if self._executing:
-            return
-
-        self._specific_parameters.clear()
-
-    def load_targets(self, targets: list[str]) -> None:
-        """
-            Load new target list to replace old ones.
-
-            Warning: Duplicates will be removed due to racing conditions with multiple threads.
-        """
-
-        if self._executing:
-            return
-
-        for target in targets:
-            if target not in self._targets:
-                self._targets.append(target)
-
-    def load_default_parameters(self, default_parameters: dict) -> None:
-        """
-            Load new set of default parameters.
-
-            Default parameters are used by all targets.
-
-            Ex:
-               default_parameters = {
-                "reddening law": "CCM",
-                "initial velocity guess": 150,
-                }
-        """
-
-        if self._executing:
-            return
-
-        self._default_parameters.update(default_parameters)
-
-    def load_target_specific_parameters(self, specific_parameters: dict) -> None:
-        """
-            Load new set of specific parameters.
-
-            Specific parameters are used to change default parameter values for specific targets.
-
-            Ex:
-               specific_parameters = {
-                "./target1.fits": {"speed": 10},
-                "./target2.fits": {"redshift": 0.1, "speed": 5},
-                }
-
-            Warning: Method does nothing if urutau is executing.
-        """
-
-        if self._executing:
-            return
-
-        self._specific_parameters.update(specific_parameters)
-
-    def set_number_of_threads(self, num_threads: int) -> None:
-        """
-            Set number of working threads to process multiple targets at the same time.
-
-            Warning: num_threads can't be less than 1
-        """
-
-        if self._executing:
-            return
-
-        self._num_procs = num_threads if num_threads > 1 else 1
-
-    def execute(self, save_path_root: str = "./", save_config: bool = True, debug: bool = False) -> None:
-        """
-            Execute all modules from the list.
-
-            Saves the final result on save_path.
-        """
-
-        if len(self._modules) == 0:
-            print("No modules loaded!")
-            return
-        elif len(self._targets) == 0:
-            print("No targets loaded!")
-            return
-        elif self._executing:
-            print("Urutau already executing!")
-            return
-        elif os.path.exists(save_path_root) and not os.path.isdir(save_path_root):
-            print(f"Invalid directory path '{save_path_root}'!")
-            return
-
-        if not os.path.exists(save_path_root):
-            os.makedirs(save_path_root)
-
-        self._executing = True
-
-        for target in self._targets:
-            self._jobs.put(target)
-
-        for _ in range(self._num_procs):
-            worker_args = (save_path_root, save_config, debug)
-            worker = th.Thread(target=self._worker_task, args=worker_args)
-            worker.start()
-
-        self._jobs.join()
-        self._targets.clear()
-        self._executing = False
+        self._target_containers.append(target_container)
 
     def read_csv(self, targets_dir: str, csv_file: str) -> None:
         """
@@ -196,82 +101,112 @@ class Urutau:
         if self._executing:
             return
 
-        csv_df = pd.read_csv(csv_file)
+        csv_df: pd.DataFrame = pd.read_csv(csv_file)
+        properties = csv_df.columns.to_list()
 
         target_column = "target"
 
-        if target_column in csv_df.columns:
-            targets_names = list(csv_df[target_column].values)
-            target_property = target_column
-            properties = csv_df.columns.to_list()
+        if target_column in properties:
             properties.remove(target_column)
         else:
-            targets_names = list(csv_df.iloc[:, 0].values)
-            columns_list = csv_df.columns.to_list()
-            target_property = columns_list[0]
-            properties = columns_list[1:]
+            target_column = properties[0]
+            properties.remove(target_column)
 
-        targets = [os.path.join(targets_dir, x) for x in targets_names]
-        self.load_targets(targets)
+        for index, row in csv_df.iterrows():
+            target_path = os.path.join(targets_dir, row[target_column])
+            target_cfg = {prop: row[prop] for prop in properties}
+            self.add_target(target_path, target_cfg)
 
-        spec_config = {
-            os.path.join(targets_dir, row[target_property]):
-            row[properties].to_dict() for (_, row) in csv_df.iterrows()
-        }
-        self.load_target_specific_parameters(spec_config)
+    def execute(self, save_path_root: str = "./", save_config: bool = True, debug: bool = False) -> None:
+        """
+            Execute all modules from the list.
 
-    def _worker_task(self, save_path_root: str, save_config: bool, debug: bool) -> None:
+            Saves the final result on save_path.
+        """
+
+        if not self._can_run(save_path_root):
+            return
+
+        if not os.path.exists(save_path_root):
+            os.makedirs(save_path_root)
+
+        self._executing = True
+
+        for target_container in self._target_containers:
+            self._jobs.put(target_container)
+
+        for _ in range(self._num_threads):
+            worker_args = (save_path_root, save_config, debug)
+            worker = th.Thread(target=self._worker_task, args=worker_args)
+            worker.start()
+
+        self._jobs.join()
+        self._target_containers.clear()
+
+        self._executing = False
+
+    def _can_run(self, save_path_root: str) -> None:
+
+        is_valid = True
+
+        if len(self._module_containers) == 0:
+            print("No modules loaded!")
+            is_valid = False
+        elif len(self._target_containers) == 0:
+            print("No targets loaded!")
+            is_valid = False
+        elif self._executing:
+            print("Urutau already executing!")
+            is_valid = False
+        elif os.path.exists(save_path_root) and not os.path.isdir(save_path_root):
+            print(f"Invalid directory path '{save_path_root}'!")
+            is_valid = False
+
+        return is_valid
+
+    def _worker_task(self, path_root: str, save_config: bool, debug: bool) -> None:
 
         while True:
 
             # Verify if the jobs queue is not empty
             try:
-                target = self._jobs.get(False)
+                target_container = self._jobs.get(False)
             except queue.Empty:
-                break
-
-            final_target_name = self._final_save_path(save_path_root, target)
-
-            orig_file_data = fits.open(target)
+                return
 
             final_configuration = dict()
 
-            for next_module in self._modules:
+            target = target_container.get_target()
+            target_cfg = target_container.get_config()
 
-                config_parameters = dict()
+            if not os.path.exists(target):
+                print(f"TARGET {target} NOT FOUND!")
+                self._jobs.task_done()
 
-                # Config priority order:
-                #       module -> default targets -> specific target
-                if next_module in self._modules_configs:
-                    config_parameters.update(
-                        self._modules_configs[next_module])
+            with fits.open(target) as opened_file:
 
-                config_parameters.update(self._default_parameters.copy())
+                for module_capsule in self._module_containers:
 
-                if target in self._specific_parameters:
-                    config_parameters.update(self._specific_parameters[target])
+                    loaded_module = module_capsule.loaded_module(target_cfg)
 
-                loaded_module = next_module(**config_parameters)
+                    if debug:
+                        self._debug_message_parameters(loaded_module)
+
+                    result_hdus = loaded_module.execute(opened_file)
+                    self._update_result_file(opened_file, result_hdus)
+
+                    final_configuration.update(loaded_module.config)
 
                 if debug:
-                    self._debug_message_parameters(loaded_module)
+                    self._debug_message_final_configuration(
+                        target, final_configuration)
 
-                # Execute module
-                next_hdu_list = loaded_module.execute(orig_file_data)
+                if save_config:
+                    cfg_hdus = self._generate_config_hdu(final_configuration)
+                    self._update_result_file(opened_file, cfg_hdus)
 
-                self._update_result_file(orig_file_data, next_hdu_list)
-
-                final_configuration.update(loaded_module.config)
-
-            if debug:
-                self._debug_message_final_configuration(
-                    target, final_configuration)
-
-            if save_config:
-                config_hdu = self._generate_config_hdu(final_configuration)
-                self._update_result_file(orig_file_data, config_hdu)
-
-            orig_file_data.writeto(final_target_name, overwrite=True)
+                final_target_name = self._final_save_path(path_root, target)
+                opened_file.writeto(final_target_name, overwrite=True)
 
             self._jobs.task_done()
 
