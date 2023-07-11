@@ -12,6 +12,7 @@ urutau/modules/_dereddening.py
 urutau/modules/_filters.py
 urutau/modules/_module_base.py
 urutau/modules/_resampling.py
+urutau/modules/_resolution.py
 urutau/modules/_sn_map.py
 urutau/modules/_starlight.py
 urutau/starlight_utils/__init__.py
