@@ -7,35 +7,24 @@ import numpy as np
 
 from ._module_base import AbstractModule
 
-# TODO: Add functionality to calculate signal to noise without var, error or ivar.
 
-
-class SignalToNoiseMask(AbstractModule):
+class GenericSNMask(AbstractModule):
     """
-        Module to generate signal to noise maps based on threshold values.
+        Module to generate signal to noise maps based on threshold values. It
+        utilizes average and standard deviation values of the flux to calculate
+        the signal to noise map at the desired window range.
 
         Default Urutau Parameters:
             - "hdu flux" = hdu name with flux data (default = "FLUX")
-            - "hdu var" = hdu name with variance data (default = None)
-            - "hdu ivar" = hdu name with inverse variance data (default = None)
-            - "hdu error" = hdu name with error data (default = None)
             - "sn window" = signal to noise window (default = [4000, 6000])
-            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "thresholds" = signal to noise thresholds list (default = [10])
             - "redshift" = redshift of the object (default = 0.)
 
         Resulting Extension Names = "SN_MASKS_X",
             where X is the threshold value
 
         Obs:
-            the module will use either var, ivar, or error. If the user
-            provides none of the options, the map will be generated using
-            the mean and standard deviation of the flux on the sn window.
-
-            if the user provides more than one options ("hdu var", "hdu ivar",
-            "hdu error"), the module will prioritize one of them in this order:
-            error > ivar > var.
-
-            each threshold value generates an HDU extension.
+            each threshold value generates a different HDU extension.
 
         Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
         following header parameters:
@@ -44,13 +33,10 @@ class SignalToNoiseMask(AbstractModule):
             - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
     """
 
-    name = "SN Masks"
+    name = "Generic SN Mask"
 
     def _set_init_default_parameters(self) -> None:
         self.default_parameters["hdu flux"] = "FLUX"
-        self.default_parameters["hdu var"] = None
-        self.default_parameters["hdu ivar"] = None
-        self.default_parameters["hdu error"] = None
         self.default_parameters["sn window"] = [4000, 6000]
         self.default_parameters["thresholds"] = [10]
         self.default_parameters["redshift"] = 0.
@@ -68,37 +54,7 @@ class SignalToNoiseMask(AbstractModule):
         left_index = self._min_index(left_lambda, wavelength)
         right_index = self._max_index(right_lambda, wavelength)
 
-        sn_ratio_map = np.zeros_like(flux_data[0, :, :])
-        flux_cut = flux_data[left_index:right_index, :, :]
-        mean_flux = np.mean(flux_cut, axis=0)
-
-        if not (self["hdu error"] is None):
-            error_data = input_hdu[self["hdu error"]].data
-            error_cut = error_data[left_index:right_index, :, :]
-            mean_error = np.mean(error_cut, axis=0)
-
-            good_ind = mean_error > 0
-            sn_ratio_map[good_ind] = mean_flux[good_ind] / mean_error[good_ind]
-        elif not (self["hdu ivar"] is None):
-            sqrt_ivar_data = np.sqrt(input_hdu[self["hdu ivar"]].data)
-            sqrt_ivar_cut = sqrt_ivar_data[left_index:right_index, :, :]
-            mean_sqrt_ivar = np.mean(sqrt_ivar_cut, axis=0)
-
-            sn_ratio_map = mean_flux * np.sqrt(mean_sqrt_ivar)
-        elif not (self["hdu var"] is None):
-            sqrt_var_data = np.sqrt(input_hdu[self["hdu var"]].data)
-            sqrt_var_cut = sqrt_var_data[left_index:right_index, :, :]
-            mean_sqrt_var = np.mean(sqrt_var_cut, axis=0)
-
-            good_ind = mean_sqrt_var > 0
-            sn_ratio_map[good_ind] = mean_flux[good_ind] / \
-                mean_sqrt_var[good_ind]
-        else:
-            flux_at_window = flux_data[left_index:right_index, :, :]
-            mean_at_window = np.nanmean(flux_at_window, axis=0)
-            std_deviation_map = np.nanstd(flux_at_window, axis=0)
-
-            sn_ratio_map = mean_at_window / std_deviation_map
+        sn_ratio_map = self._sn_map(input_hdu, left_index, right_index)
 
         hdus_list = fits.HDUList()
 
@@ -108,6 +64,17 @@ class SignalToNoiseMask(AbstractModule):
             hdus_list.append(hdu)
 
         return hdus_list
+
+    def _sn_map(self, input_hdu: fits.HDUList, left_index: int, right_index: int) -> np.ndarray:
+        flux_data = input_hdu[self["hdu flux"]].data
+
+        flux_at_window = flux_data[left_index:right_index, :, :]
+        mean_at_window = np.nanmean(flux_at_window, axis=0)
+        std_deviation_map = np.nanstd(flux_at_window, axis=0)
+
+        sn_ratio_map = mean_at_window / std_deviation_map
+
+        return sn_ratio_map
 
     def _sn_mask(self, min_l: float, max_l: float, sn_ratio: np.ndarray, limit: float) -> fits.FitsHDU:
         sn_map = np.zeros_like(sn_ratio, dtype=int)
@@ -137,3 +104,150 @@ class SignalToNoiseMask(AbstractModule):
         wave_array = ini_wave + np.array([x*dt_wave for x in range(0, z_size)])
 
         return wave_array / (1. + self["redshift"])
+
+
+class SNMaskWithError(GenericSNMask):
+    """
+        Module to generate signal to noise maps based on threshold values. It
+        utilizes the error data from an hdu to calculate the desired signal
+        to noise map at window range.
+
+        Default Urutau Parameters:
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "hdu error" = hdu name with error data (default = "ERROR")
+            - "sn window" = signal to noise window (default = [4000, 6000])
+            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "redshift" = redshift of the object (default = 0.)
+
+        Resulting Extension Names = "SN_MASKS_X",
+            where X is the threshold value
+
+        Obs:
+            each threshold value generates a different HDU extension.
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "SN Mask With Error"
+
+    def _set_init_default_parameters(self) -> None:
+        super()._set_init_default_parameters()
+        self.default_parameters["hdu error"] = "ERROR"
+
+    def _sn_map(self, input_hdu: fits.HDUList, left_index: int, right_index: int) -> np.ndarray:
+        flux_data = input_hdu[self["hdu flux"]].data
+        error_data = input_hdu[self["hdu error"]].data
+
+        sn_ratio_map = np.zeros_like(flux_data[0, :, :])
+        flux_cut = flux_data[left_index:right_index, :, :]
+        mean_flux = np.mean(flux_cut, axis=0)
+
+        error_cut = error_data[left_index:right_index, :, :]
+        mean_error = np.mean(error_cut, axis=0)
+
+        good_ind = mean_error > 0
+        sn_ratio_map[good_ind] = mean_flux[good_ind] / mean_error[good_ind]
+
+        return sn_ratio_map
+
+
+class SNMaskWithIVar(GenericSNMask):
+    """
+        Module to generate signal to noise maps based on threshold values. It
+        utilizes the inverse variance data from an hdu to calculate the desired
+        signal to noise map at window range.
+
+        Default Urutau Parameters:
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "hdu ivar" = hdu name with inverse variance data (default = "IVAR")
+            - "sn window" = signal to noise window (default = [4000, 6000])
+            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "redshift" = redshift of the object (default = 0.)
+
+        Resulting Extension Names = "SN_MASKS_X",
+            where X is the threshold value
+
+        Obs:
+            each threshold value generates a different HDU extension.
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "SN Mask With Inverse Variance"
+
+    def _set_init_default_parameters(self) -> None:
+        super()._set_init_default_parameters()
+        self.default_parameters["hdu ivar"] = "IVAR"
+
+    def _sn_map(self, input_hdu: fits.HDUList, left_index: int, right_index: int) -> np.ndarray:
+        flux_data = input_hdu[self["hdu flux"]].data
+        ivar_data = input_hdu[self["hdu ivar"]].data
+
+        flux_cut = flux_data[left_index:right_index, :, :]
+        mean_flux = np.mean(flux_cut, axis=0)
+
+        sqrt_ivar_data = np.sqrt(ivar_data)
+        sqrt_ivar_cut = sqrt_ivar_data[left_index:right_index, :, :]
+        mean_sqrt_ivar = np.mean(sqrt_ivar_cut, axis=0)
+
+        sn_ratio_map = mean_flux * np.sqrt(mean_sqrt_ivar)
+
+        return sn_ratio_map
+
+
+class SNMaskWithVar(GenericSNMask):
+    """
+        Module to generate signal to noise maps based on threshold values. It
+        utilizes the variance data from an hdu to calculate the desired signal
+        to noise map at window range.
+
+        Default Urutau Parameters:
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "hdu var" = hdu name with inverse variance data (default = "VAR")
+            - "sn window" = signal to noise window (default = [4000, 6000])
+            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "redshift" = redshift of the object (default = 0.)
+
+        Resulting Extension Names = "SN_MASKS_X",
+            where X is the threshold value
+
+        Obs:
+            each threshold value generates a different HDU extension.
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "SN Mask With Variance"
+
+    def _set_init_default_parameters(self) -> None:
+        super()._set_init_default_parameters()
+        self.default_parameters["hdu var"] = "VAR"
+
+    def _sn_map(self, input_hdu: fits.HDUList, left_index: int, right_index: int) -> np.ndarray:
+        flux_data = input_hdu[self["hdu flux"]].data
+        var_data = input_hdu[self["hdu var"]].data
+
+        flux_cut = flux_data[left_index:right_index, :, :]
+        mean_flux = np.mean(flux_cut, axis=0)
+
+        sqrt_var_data = np.sqrt(var_data)
+        sqrt_var_cut = sqrt_var_data[left_index:right_index, :, :]
+        mean_sqrt_var = np.mean(sqrt_var_cut, axis=0)
+
+        good_ind = mean_sqrt_var > 0
+        sn_ratio_map = np.zeros_like(flux_data[0, :, :])
+        sn_ratio_map[good_ind] = mean_flux[good_ind] / mean_sqrt_var[good_ind]
+
+        return sn_ratio_map
