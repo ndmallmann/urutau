@@ -9,38 +9,43 @@ from urutau import Urutau
 from urutau.modules import (
     ButterworthFilter,
     CcmLaw,
-    SignalToNoiseMask,
+    SNMaskWithIVar,
     StarlightOnUrutau
 )
 
+
 def example():
 
-    # Open urutau
-    urutau = Urutau()
+    # Open urutau (with two threads to process data)
+    urutau = Urutau(num_threads=2)
 
-    # Number of threads (number of datacubes to be processed simultaneously)
-    urutau.set_number_of_threads(2)
+    # Add each module in SEQUENCE of execution
 
-    # Add desired modules to the pipeline (in order)
-    modules = [ButterworthFilter, CcmLaw,
-               SignalToNoiseMask, StarlightOnUrutau]
-    urutau.set_modules(modules)
-
-    # Configure each module
-    # You only need to configure a module to change default values
+    # ButterworthFilter
+    # If no configuration is give, it will use only default values.
+    #
+    # In this case, the default values for ButterworthFilter are:
+    #
+    #   "hdu flux" = hdu name with flux data (default = "FLUX")
+    #   "order" = butterworth order (default = 3)
+    #   "range" = butterworth range (default = 0.3)
+    urutau.add_module(ButterworthFilter)
 
     # CcmLaw
     # Default "hdu flux" is "FLUX", but we want to run this module on the
     # hdu produced by the ButterworthFilter ("FLUX_BW")
+    #
+    # Since no other parameter is configured besides "hdu flux", their values
+    # will be the default one.
     ccm_cfg = {"hdu flux": "FLUX_BW"}
-    urutau.config_module(CcmLaw, ccm_cfg)
+    urutau.add_module(CcmLaw, ccm_cfg)
 
-    # SignalToNoiseMask
+    # SNMaskWithIVar MODULE
     # Similar to the configuration of CcmLaw, we want to run the singal to
     # noise mask on the resulting hdu (from CcmLaw, i.e., "FLUX_DRD")
     #
-    # For the signal to noise mask, either "hdu ivar", "hdu error" or "hdu var"
-    # must be given
+    # This module utilizes the inverce variance data from the HDU "IVAR" to
+    # calculate the SN mask.
     #
     # Signal to noise window and thresholds are changed from the default values
     # (default "sn window" = [4000, 6000] and default "thresholds" = [10])
@@ -50,9 +55,9 @@ def example():
         "sn window": (5650, 5750),
         "thresholds": [1, 5, 10, 20]
     }
-    urutau.config_module(SignalToNoiseMask, sn_mask_cfg)
+    urutau.add_module(SNMaskWithIVar, sn_mask_cfg)
 
-    # StarlightOnUrutau
+    # StarlightOnUrutau MODULE
     #
     # Creating a dictionary with the desired population vectors and their
     # age limits (min, max) to be used with the starlight configuration
@@ -71,9 +76,9 @@ def example():
     #
     # Setting up the path to the starlight static executable and a reference
     # grid (see Cid Fernandes' starlight manual) as well as the population ages
-    # 
-    # Obs: the reference grid must contain at least 1 mock target line (see 
-    #      example "reference_grid.in") 
+    #
+    # Obs: the reference grid must contain at least 1 mock target line (see
+    #      example "reference_grid.in")
     starlight_cfg = {
         "hdu flux": "FLUX_DRD",
         "hdu flag": "SN_MASKS_10",
@@ -81,12 +86,12 @@ def example():
         "default grid file": "./reference_grid.in",
         "population ages": pop_age_par,
     }
-    urutau.config_module(StarlightOnUrutau, starlight_cfg)
+    urutau.add_module(StarlightOnUrutau, starlight_cfg)
 
     # Load targets
     # You can load the targets with two methods
-    # Using a list of paths or a csv file
-    # 
+    # Using adding target by target or using a csv file
+    #
     # The csv file has the advantage of considering every column as a potential
     # parameter to be used by the modules. As an example, see the file
     # "targets.csv". Every module containing a "redshift" parameter will use
@@ -94,23 +99,16 @@ def example():
     # different value of redshift for each target).
     urutau.read_csv(targets_dir="./datacubes/", csv_file="./targets.csv")
 
-    # Using a list of path requires you to adjust every specific parameter
+    # The other method (target by target)
     #
     # For example:
     #
     #     target_parameters = {
-    #         "./datacubes/Mrk926.fits":
-    #         {
     #           "redshift": 0.04702,
     #           "galaxy distance": 202.66,
-    #           "ebv": 0.036 
-    #         }
+    #           "ebv": 0.036
     #     }
-    #
-    #     targets_list = [t for t in target_parameters.keys()]
-    #
-    #     urutau.load_targets(targets_list)
-    #     urutau.load_target_specific_parameters(target_parameters)
+    #     urutau.add_target("./datacubes/Mrk926.fits", target_parameters)
 
     # Execute urutau
     # If save_config is true, urutau will append a configuration hdu to every
