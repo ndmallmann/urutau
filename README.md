@@ -1,16 +1,16 @@
 # Urutau
 
-Urutau is a modular tool developed to work with fits files and multithreading.
+Urutau is a modular pipeline tool developed to work with fits files and multithreading.
 
 ## Requirements
 
 Urutau requires Python 3.10 and the following python libraries:
 
-- matplotlib
+- astropy
 - pandas
 - scipy
 
-They are very popular libraries, but, in case they are not installed in your machine, urutau's installation should include them automatically.
+They are very popular libraries used in astronomy, but, in case they are not installed in your machine, urutau's installation should include them automatically.
 
 ## Installation
 
