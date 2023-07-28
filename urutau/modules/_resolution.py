@@ -13,25 +13,28 @@ class DegradeData():
 
         Default Urutau Parameters:
             - "hdu target" = hdu extension to be resampled (default = "FLUX")
-            - "r input min" = input R value at the lowest wavelength (default = 2200)
-            - "r input max" = input R value at the highest wavelength (default = None)
-            - "r output min" = output R value at the lowest wavelength (default = 1000)
-            - "r output max" = output R value at the highest wavelength (default = None)
-            - "lambda step" = desired wavelength dispersion (default = 1.)
+            - "r input" = input value/array with R values (default = 2200)
+            - "r output" = output value/array with R values (default = 1000)
+
+        Obs: r input and r output can be floats (for constant R) or arrays with
+        size NAXIS3 (length of z axis on the HDU)
 
         Resulting Extension Name = "X_DEGR", where X is the
             original extension name
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
     """
 
     name = "Resampler"
 
     def _set_init_default_parameters(self) -> None:
         self.default_parameters["hdu target"] = "FLUX"
-        self.default_parameters["r input min"] = 2200
-        self.default_parameters["r input max"] = None
-        self.default_parameters["r output min"] = 1000
-        self.default_parameters["r output max"] = None
-        self.default_parameters["lambda step"] = 1.
+        self.default_parameters["r input"] = 2200
+        self.default_parameters["r output"] = 1000
 
     def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
         hdu = self["hdu target"]
@@ -42,29 +45,21 @@ class DegradeData():
         wave = self._wave_array(header)
 
         new_hdu = self._degraded_hdu(wave, data)
+        orig_header_name = header["EXTNAME"]
+
+        new_hdu["EXTNAME"] = f"{orig_header_name}_DEGR"
+        delta_name = "CDELT3" if "CDELT3" in header else "CD3_3"
+        new_hdu.header["CDELT3"] = header[delta_name]
+        new_hdu.header["CRPIX3"] = header["CRPIX3"]
+        new_hdu.header["CRVAL3"] = header["CRVAL3"]
 
         return fits.HDUList(hdus=[new_hdu])
 
     def _degraded_hdu(self, wave: np.ndarray, orig_data: np.ndarray) -> np.ndarray:
         FWHM_CONST = 2.35482
 
-        lambda_step = self["lambda step"]
-
-        r_in_min = self["r input min"]
-        r_in_max = self["r input max"]
-
-        r_out_min = self["r output min"]
-        r_out_max = self["r output min"]
-
-        if r_in_max is None:
-            r_in = r_in_min
-        else:
-            r_in = np.linspace(r_in_min, r_in_max, wave.size)
-
-        if r_out_max is None:
-            r_out = r_out_min
-        else:
-            r_out = np.linspace(r_out_min, r_out_max, wave.size)
+        r_in = self["r input"]
+        r_out = self["r output"]
 
         sigma_in = wave / (r_in * FWHM_CONST)
         sigma_out = wave / (r_out * FWHM_CONST)
@@ -75,9 +70,8 @@ class DegradeData():
         wave_min = wave - NUM_SIGMA_TO_CALCULATE * conv_sigma
         wave_max = wave + NUM_SIGMA_TO_CALCULATE * conv_sigma
 
-        final_wave = np.arange(wave[0], wave[-1], lambda_step)
         _, y_size, x_size = orig_data.shape
-        z_size = len(final_wave)
+        z_size = len(wave)
 
         degraded_flux = np.zeros((z_size, y_size, x_size), dtype=float)
 
@@ -92,13 +86,9 @@ class DegradeData():
                     flux_conv[i] = np.nansum(
                         psf * orig_data[index_cut]) / np.nansum(psf)
 
-                interp_func = interp1d(wave, flux_conv)
-                degraded_flux[:, j, i] = interp_func(final_wave)
+                degraded_flux[:, j, i] = flux_conv
 
         hdu = fits.ImageHDU(data=degraded_flux)
-        hdu.header["CDELT3"] = lambda_step
-        hdu.header["CRPIX3"] = 1
-        hdu.header["CRVAL3"] = final_wave[0]
 
         return hdu
 
