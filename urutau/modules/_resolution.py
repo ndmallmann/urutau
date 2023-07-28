@@ -7,7 +7,7 @@ from astropy.io import fits
 from scipy.interpolate import interp1d
 
 
-class DegradeSpectrum():
+class DegradeData():
     """
         Module to degrade data resolution.
 
