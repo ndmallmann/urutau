@@ -12,7 +12,7 @@ from ._module_base import AbstractModule
 
 class Resampler(AbstractModule):
     """
-        Abstract data resampler module for Urutal.
+        Abstract data resampler module for Urutau.
 
         Default Urutau Parameters:
             - "hdu target" = hdu extension to be resampled (default = "FLUX")
