@@ -211,12 +211,13 @@ class StarlightGeneric(StarlightWrapper):
 
         Optional:
             - ivar_hdu     =  Name of inverse variance hdu
-            - error_hdu    =  Name of error hdu (will override ivar)
+            - var_hdu      =  Name of variance hdu (will override ivar)
+            - error_hdu    =  Name of error hdu (will override ivar and var)
             - flag_hdu     =  Name of mask for bad spaxels (anything different
                               from 0 is a bad spaxel)
 
         Obs:
-            error_hdu and ivar_hdu can only be a 3D matrix
+            error_hdu, var_hdu and ivar_hdu can only be a 3D matrix
             (per wavelength error)
 
             flag_hdu can be a 2D matrix (per spaxel mask) or 3D matrix (per 
@@ -228,6 +229,7 @@ class StarlightGeneric(StarlightWrapper):
     def __init__(self, starlight_exec_path: str, flux_hdu: str | int, **kwargs) -> None:
         self._flux_loc = flux_hdu
         self._ivar_loc = self._optional_arg("ivar_hdu", **kwargs)
+        self._var_loc = self._optional_arg("var_hdu", **kwargs)
         self._error_loc = self._optional_arg("error_hdu", **kwargs)
         self._flag_loc = self._optional_arg("flag_hdu", **kwargs)
         self._matrix = None
@@ -257,6 +259,7 @@ class StarlightGeneric(StarlightWrapper):
         else:
             return np.zeros((0, 0), dtype=str)
 
+        has_var_val = not self._var_loc is None
         has_ivar_val = not self._ivar_loc is None
         has_error_val = not self._error_loc is None
 
@@ -269,6 +272,12 @@ class StarlightGeneric(StarlightWrapper):
 
             error_data = np.full_like(ivar_data, error_limit)
             error_data[good_ind] = 1. / np.sqrt(ivar_data[good_ind])
+        elif has_var_val and self._var_loc in cube_data:
+            var_data = cube_data[self._var_loc].data
+            good_ind = var_data > 0.
+
+            error_data = np.full_like(var_data, error_limit)
+            error_data[good_ind] = np.sqrt(var_data[good_ind])
         else:
             has_error = False
 

@@ -58,6 +58,7 @@ class StarlightOnUrutau(AbstractModule):
         self.default_parameters["starlight path"] = ""
         self.default_parameters["hdu flux"] = "FLUX"
         self.default_parameters["hdu ivar"] = None
+        self.default_parameters["hdu var"] = None
         self.default_parameters["hdu error"] = None
         self.default_parameters["hdu flag"] = None
 
@@ -78,12 +79,15 @@ class StarlightOnUrutau(AbstractModule):
         sl_path = self["starlight path"]
         flux = self["hdu flux"]
         ivar = self["hdu ivar"]
+        var = self["hdu var"]
         error = self["hdu error"]
         flag = self["hdu flag"]
 
         extra_par = dict()
         if ivar is not None:
             extra_par["ivar_hdu"] = ivar
+        if var is not None:
+            extra_par["var_hdu"] = var
         if error is not None:
             extra_par["error_hdu"] = error
         if flag is not None:
