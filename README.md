@@ -44,7 +44,7 @@ As an example, here's a bit of code that generates data based on a FLUX HDU with
 ```
 from urutau import Urutau
 
-from urutau.modules import Resampler
+from urutau.modules import SpatialResampler
 
 ur = Urutau(num_threads = 1)
 
@@ -53,7 +53,7 @@ resampler_config = {
     "data type": "flux",
     "resampler size": 4
 }
-ur.add_module(Resampler, resampler_config)
+ur.add_module(SpatialResampler, resampler_config)
 
 ur.read_csv(targets_dir="./cubes/",
             csv_file="./target_parameters.csv")
@@ -61,7 +61,7 @@ ur.read_csv(targets_dir="./cubes/",
 ur.execute("./save_folder/")
 ```
 
-This snippet of code uses one single module (Resampler) to resize the spatial dimensions of the "DATA" HDU from all the cubes inside the directory "./cubes/" and listed in "./target_parameters.csv".
+This snippet of code uses one single module (SpatialResampler) to resize the spatial dimensions of the "DATA" HDU from all the cubes inside the directory "./cubes/" and listed in "./target_parameters.csv".
 
 See another example code [here](/examples/using_urutau/using_urutau.py).
 
@@ -73,7 +73,7 @@ In order to create a module, the user needs to import the base module (an abstra
 
 ```
 from astropy.io import fits
-from urutau.modules import AbstracModule
+from urutau.modules import AbstractModule
 
 class MyModule(AbstractModule):
     """
