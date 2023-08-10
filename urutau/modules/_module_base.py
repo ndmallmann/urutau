@@ -84,3 +84,4 @@ class AbstractModule(ABC):
         """
             Execute the module and update the fits_file.
         """
+        pass

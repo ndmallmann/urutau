@@ -6,8 +6,10 @@
 import itertools as it
 import math
 import os
+import queue
 import re
 import subprocess as sp
+import threading as th
 import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Callable
@@ -24,7 +26,7 @@ class StarlightWrapper(ABC):
         Wrapper to execute starlight.
     """
 
-    def __init__(self, sl_exec: str) -> None:
+    def __init__(self, sl_exec: str, num_threads: int = 1) -> None:
 
         # Starlight
         self._sl_exec_name = os.path.join(".", os.path.basename(sl_exec))
@@ -34,6 +36,7 @@ class StarlightWrapper(ABC):
         self._grid_generator = GridGenerator(GridParameters(), "")
         self._extracted_files = list()
         self._sl_output_files = list()
+        self._num_threads = num_threads
 
         # Parameters specific to a cube when running starlight
         self._pop_age = dict()
@@ -161,13 +164,27 @@ class StarlightWrapper(ABC):
         if not os.path.exists(obs_dir):
             os.makedirs(obs_dir)
 
-    def _call_starlight(self, grids: list[str]) -> None:
-        for grid in grids:
-            with open(grid, "rb") as grid_handler:
-                arguments = (self._sl_exec_name,)
-                prog = sp.Popen(args=arguments, stdin=grid_handler,
-                                stdout=sp.DEVNULL, cwd=self._sl_dir)
-                prog.wait()
+    def _call_starlight(self, full_grids_list: list[str]) -> None:
+
+        def _starlight_thread(grid_list: list[str], exec_name: str, exec_dir: str) -> None:
+            for grid in grid_list:
+                with open(grid, "rb") as grid_handler:
+                    arguments = (exec_name,)
+                    prog = sp.Popen(args=arguments, stdin=grid_handler,
+                                    stdout=sp.DEVNULL, cwd=exec_dir)
+                    prog.wait()
+
+        workers: list[th.Thread] = list()
+
+        for grid_list in np.array_split(full_grids_list, self._num_threads):
+            arguments = (grid_list, self._sl_exec_name, self._sl_dir)
+            worker = th.Thread(target=_starlight_thread, args=arguments)
+            worker.start()
+            workers.append(worker)
+
+        for worker in workers:
+            worker.join()
+
 
     def _delete_tmp_files(self) -> None:
         self._delete_extracted_files()
@@ -198,7 +215,6 @@ class StarlightWrapper(ABC):
                 os.remove(extracted)
         self._extracted_files.clear()
 
-
 class StarlightGeneric(StarlightWrapper):
     """
         Run starlight for generic datacubes.
@@ -226,7 +242,7 @@ class StarlightGeneric(StarlightWrapper):
             starlight ignores flag if error is not available
     """
 
-    def __init__(self, starlight_exec_path: str, flux_hdu: str | int, **kwargs) -> None:
+    def __init__(self, starlight_exec_path: str, flux_hdu: str | int, num_threads: int = 1, **kwargs) -> None:
         self._flux_loc = flux_hdu
         self._ivar_loc = self._optional_arg("ivar_hdu", **kwargs)
         self._var_loc = self._optional_arg("var_hdu", **kwargs)
@@ -241,7 +257,7 @@ class StarlightGeneric(StarlightWrapper):
         self._new_data = list()
         self._hdu_list = fits.HDUList()
 
-        super().__init__(starlight_exec_path)
+        super().__init__(starlight_exec_path, num_threads)
 
     def _optional_arg(self, name: str, **kwargs) -> Any:
         if name in kwargs:

@@ -14,6 +14,7 @@ class StarlightOnUrutau(AbstractModule):
         Starlight module for urutau.
 
         Default Urutau Parameters:
+            - "number of threads" = number of starlight executables to run in parallel (default = 1)
             - "starlight path" = path for starlight's executable (default = "")
             - "default grid file" = reference grid file (default = "")
             - "hdu flux" = hdu name with flux data (default = "FLUX")
@@ -55,6 +56,7 @@ class StarlightOnUrutau(AbstractModule):
 
     def _set_init_default_parameters(self) -> None:
 
+        self.default_parameters["number of threads"] = 1
         self.default_parameters["starlight path"] = ""
         self.default_parameters["hdu flux"] = "FLUX"
         self.default_parameters["hdu ivar"] = None
@@ -76,6 +78,7 @@ class StarlightOnUrutau(AbstractModule):
 
     def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
 
+        num_threads = self["number of threads"]
         sl_path = self["starlight path"]
         flux = self["hdu flux"]
         ivar = self["hdu ivar"]
@@ -93,7 +96,7 @@ class StarlightOnUrutau(AbstractModule):
         if flag is not None:
             extra_par["flag_hdu"] = flag
 
-        wrapper = StarlightGeneric(sl_path, flux, **extra_par)
+        wrapper = StarlightGeneric(sl_path, flux, num_threads, **extra_par)
 
         pop_age_par = self["population ages"]
         gal_dist = self["galaxy distance"]

@@ -7,6 +7,7 @@ from astropy.io import fits
 
 from ._module_base import AbstractModule
 
+
 class DegradeData(AbstractModule):
     """
         Module to degrade data resolution.
@@ -30,7 +31,7 @@ class DegradeData(AbstractModule):
             - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
     """
 
-    name = "Resampler"
+    name = "Degrade Data"
 
     def _set_init_default_parameters(self) -> None:
         self.default_parameters["hdu target"] = "FLUX"
@@ -97,15 +98,15 @@ class DegradeData(AbstractModule):
 
                 for k in range(psf.size):
                     conv_map[k, :, :] = psf[k] * orig_map[k, :, :]
-                
-                degraded_matrix[i, :, :] = np.nansum(conv_map, axis=0) / sum_psf
+
+                degraded_matrix[i, :, :] = np.nansum(
+                    conv_map, axis=0) / sum_psf
 
         if "variance" in data_type:
             degraded_matrix = degraded_matrix ** 2.
 
         if "inv_" in data_type:
             degraded_matrix = 1. / degraded_matrix
-
 
         hdu = fits.ImageHDU(data=degraded_matrix)
 

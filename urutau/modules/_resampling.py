@@ -10,8 +10,6 @@ import numpy as np
 
 from ._module_base import AbstractModule
 
-# TODO: Resampling of spectral with binning
-
 
 class SpectralResampler(AbstractModule):
     """
