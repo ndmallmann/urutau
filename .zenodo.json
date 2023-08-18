@@ -1,0 +1,29 @@
+{
+    "description": "<p>Modular pipeline tool for python and astronomy (fits file).</p>", 
+    "license": "other-open", 
+    "title": "ndmallmann/urutau: Urutau", 
+    "version": "v1.0.0", 
+    "upload_type": "software", 
+    "publication_date": "2023-08-18", 
+    "creators": [
+        {
+            "name": "Nícolas Dullius Mallmann"
+        }, 
+        {
+            "name": "Rogério Riffel"
+        }
+    ], 
+    "access_right": "open", 
+    "related_identifiers": [
+        {
+            "scheme": "url", 
+            "identifier": "https://github.com/ndmallmann/urutau/tree/v1.0.0", 
+            "relation": "isSupplementTo"
+        }, 
+        {
+            "scheme": "doi", 
+            "identifier": "10.5281/zenodo.8263935", 
+            "relation": "isVersionOf"
+        }
+    ]
+}
