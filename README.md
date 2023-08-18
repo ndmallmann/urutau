@@ -2,6 +2,8 @@
 
 Urutau is a modular pipeline tool developed to work with fits files and multithreading.
 
+[![DOI](https://zenodo.org/badge/633615260.svg)](https://zenodo.org/badge/latestdoi/633615260)
+
 ## Requirements
 
 Urutau requires Python 3.10 and the following python libraries:
