@@ -140,7 +140,7 @@ class CcmLaw(GenericDereddening):
             a_val = -1.072 - 0.628 * y_val + 0.137 * y_val**2 - 0.070 * y_val**3
             b_val = 13.670 + 4.257 * y_val - 0.420 * y_val**2 + 0.374 * y_val**3
 
-        y_val = a_val * self["ebv"] + b_val
+        y_val = a_val  + b_val/self["rv"]
         return y_val
 
 
