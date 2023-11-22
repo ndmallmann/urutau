@@ -82,6 +82,7 @@ class GenericDereddening(AbstractModule, ABC):
 class CcmLaw(GenericDereddening):
     """
         Module that applies CCM's dereddening (Galactic).
+        Note: It returns the reddening law multiplyed by Av.
 
         Default Urutau Parameters:
             - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
@@ -140,8 +141,9 @@ class CcmLaw(GenericDereddening):
             a_val = -1.072 - 0.628 * y_val + 0.137 * y_val**2 - 0.070 * y_val**3
             b_val = 13.670 + 4.257 * y_val - 0.420 * y_val**2 + 0.374 * y_val**3
 
-        y_val = a_val  + b_val/self["rv"]
-        return y_val
+        y_val = a_val  + b_val/self["rv"] 
+        cor = y_val * (self["rv"]*self["ebv"])
+        return cor 
 
 
 class SeatonLaw(GenericDereddening):
@@ -179,4 +181,73 @@ class SeatonLaw(GenericDereddening):
         seaton_func = interpolate.interp1d(func_x_val, func_y_val)
 
         cor = seaton_func(inv_microns) * self["ebv"]
+        return cor
+
+
+
+
+class CalzettiLaw(GenericDereddening):
+    """
+        Module that applies Calzetti et all. (2000,  ApJ, 533, 682) extinction law.
+        
+        Default Urutau Parameters:
+            - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
+            - "ebv" = E(B-V) value for the target galaxy's angular position (default = 0)
+            - "rv" = Galactic Rv parameter (default = 3.1)
+
+        Resulting Extension Name = "FLUX_DRD"
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "Calzetti Law Dereddening"
+
+    def _law(self, wave_lambda: float) -> float:
+        x=wave_lambda/10000.0
+        Rv = 4.05 # this is an internal Rv, just added it explicitly to help following the law.
+        EBV_S = 0.44*self["ebv"]
+        if x < 0.12:
+             print("\n\n >>>>> Lambda=",wave_lambda,": Wavelength out of range for the dust extintion law <<<<\n\n")
+        elif 0.12 <= x < 0.63:
+            k = 2.659*(-2.156+(1.509/x)-(0.198/x**2)+(0.011/x**3)) + Rv 
+        elif 0.63 <= x <= 2.20:
+            k = 2.659*(-1.857+(1.040/x)) + Rv 
+        else:
+            print("\n\n >>>>> Lambda=",wave_lambda,": Wavelength out of range for the dust extintion law <<<<\n\n")
+        cor = k*EBV_S
+        return cor
+
+
+
+
+
+class Fitzpatrick(GenericDereddening):
+    """
+        Module that applies Fitzpatrick, Edward L (1999, PASP, 111, 63) extinction law.
+        Note: It returns the correction term multiplyed by E(B-V)
+
+        Default Urutau Parameters:
+            - "hdu flux" = Name of the hdu extension with flux data (3D matrix) (default = "FLUX")
+            - "ebv" = E(B-V) value for the target galaxy's angular position (default = 0)
+            - "rv" = Galactic Rv parameter (default = 3.1)
+
+        Resulting Extension Name = "FLUX_DRD"
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "Fitzpatrick Law Dereddening"
+
+    def _law(self, wave_lambda: float) -> float:
+        x = 10000.0/wave_lambda
+        cor = (1.e-5 + .22707*x + 1.95243*x**2 - 2.67596*x**3 + 2.6507*x**4 - 1.26812*x**5 + 0.27549*x**6 - 0.02212*x**7)
+        cor = cor * self["ebv"] 
         return cor
