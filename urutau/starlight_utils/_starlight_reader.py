@@ -112,6 +112,8 @@ class StarlightOutput():
                               np.zeros((0), dtype=float))
     wei: np.ndarray = field(default_factory=lambda:
                             np.zeros((0), dtype=float))
+    
+    invalid_file: bool = True
 
 
 class StarlightOutputReader():
@@ -134,6 +136,7 @@ class StarlightOutputReader():
         out_par = StarlightOutput()
 
         if not self._is_file_valid(sl_output):
+            out_par.invalid_file = True
             return out_par
 
         with open(sl_output, "r", encoding="utf8") as sl_file:
@@ -141,11 +144,21 @@ class StarlightOutputReader():
 
         self._current_file = sl_output
 
-        self._feed_simple_output(out_par)
-        self._feed_array_output(out_par)
+        try:
+            self._feed_simple_output(out_par)
+        except:
+            out_par.invalid_file = True
+            return out_par
+        
+        try:
+            self._feed_array_output(out_par)
+        except:
+            out_par.invalid_file = True
+            return out_par
 
         self._clear_temp_data()
 
+        out_par.invalid_file = False
         return out_par
 
     def _clear_temp_data(self):
