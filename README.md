@@ -16,7 +16,7 @@ They are very popular libraries used in astronomy, but, in case they are not ins
 
 ## Installation
 
-### Under OS system
+### Native instalation
 
 In order to install the package, just run the following command on your terminal:
 
