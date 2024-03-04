@@ -33,6 +33,13 @@ pip install urutau/
 
 ### Using CONDA enviroments
 
+```
+conda create -n urutau python=3.10 
+source activate urutau
+pip install urutau@git+https://github.com/ndmallmann/urutau.git
+```
+
+
 
 ## How does it Work?
 
