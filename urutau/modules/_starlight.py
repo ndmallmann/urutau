@@ -11,6 +11,10 @@ from ._module_base import AbstractModule
 
 class StarlightOnUrutau(AbstractModule):
     """
+        This module requires the stellar population fitting code
+        STARLIGHT. For more details on STARLIGHT and installation instructions visit:
+        http://www.starlight.ufsc.br/ 
+        
         Starlight module for urutau.
 
         Default Urutau Parameters:
