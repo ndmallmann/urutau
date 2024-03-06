@@ -631,12 +631,12 @@ class StarlightGeneric(StarlightWrapper):
                                 data_matrix=self._property_matrix(lambda x: self._mean_by_mass(x, x.z_j)))
 
         self._add_card_and_data(card_name="Mstar",
-                                card_comment="The present mass in solar masses",
-                                data_matrix=self._property_matrix(self._m_ini_t))
+                                card_comment="Present mass in stars (Msun, starlight M* )",
+                                data_matrix=self._property_matrix(self._m_cor_t))
 
         self._add_card_and_data(card_name="Mpcross",
-                                card_comment="Mass processed in stars (~2xMstar)",
-                                data_matrix=self._property_matrix(self._m_cor_t))
+                                card_comment="Mass processed in stars (Msun, starlight M*ini)",
+                                data_matrix=self._property_matrix(self._m_ini_t))
 
         self._add_card_and_data(card_name="F_Norm",
                                 card_comment="Normalization flux in input units",
