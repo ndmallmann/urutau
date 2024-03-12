@@ -78,8 +78,6 @@ class StarlightOnUrutau(AbstractModule):
 
         self.default_parameters["keep tmp"] = False
 
-        return super()._set_init_default_parameters()
-
     def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
 
         num_threads = self["number of threads"]
