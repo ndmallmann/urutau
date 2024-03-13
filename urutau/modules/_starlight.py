@@ -27,6 +27,9 @@ class StarlightOnUrutau(AbstractModule):
             - "hdu ivar" = [Optional] hdu name with inverse variance data (default = None)
             - "hdu error" = [Optional] hdu name with error data (default = None)
             - "hdu flag" = [Optional] hdu name with mask data (default = None)
+            - "sfr ages" = [Optional] star formation rate age limits (default = {})
+            - "fc exps" = [Optional] featurless continuum exponent limits (default = {})
+            - "bb temps" = [Optional] black body temperature limits (default = {})
             - "redshift" = [Optional] redshift (for correction) (default = 0.)
             - "normalization factor" = [Optional] flux's normalization value (default = 1.)
             - "flux unit" = [Optional] flux unit's unit (default = "")
@@ -69,6 +72,9 @@ class StarlightOnUrutau(AbstractModule):
         self.default_parameters["hdu flag"] = None
 
         self.default_parameters["population ages"] = {"x": [0, 13E9]}
+        self.default_parameters["sfr ages"] = {}
+        self.default_parameters["fc exps"] = {}
+        self.default_parameters["bb temps"] = {}
         self.default_parameters["galaxy distance"] = 0.
         self.default_parameters["redshift"] = 0.
         self.default_parameters["normalization factor"] = 1.
@@ -100,7 +106,11 @@ class StarlightOnUrutau(AbstractModule):
 
         wrapper = StarlightGeneric(sl_path, flux, num_threads, **extra_par)
 
-        pop_age_par = self["population ages"]
+        pop_par = self["population ages"]
+        sfr_par = self["sfr ages"]
+        fc_par = self["fc exps"]
+        bb_par = self["bb temps"]
+
         gal_dist = self["galaxy distance"]
         redshift = self["redshift"]
         norm_factor = self["normalization factor"]
@@ -118,8 +128,8 @@ class StarlightOnUrutau(AbstractModule):
         grid.vel_recession = first_entry["v0"]
         grid.vel_dispersion = first_entry["vd"]
 
-        synt_hdus = wrapper.run_starlight(input_hdu, grid, pop_age_par,
-                                          gal_dist, norm_factor, flux_unit,
+        synt_hdus = wrapper.run_starlight(input_hdu, grid, pop_par, sfr_par, fc_par,
+                                          bb_par, gal_dist, norm_factor, flux_unit,
                                           redshift, keep_tmp=self["keep tmp"])
 
         return synt_hdus

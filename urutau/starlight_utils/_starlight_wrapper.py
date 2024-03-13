@@ -78,13 +78,17 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, keep_tmp: bool = False) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, keep_tmp: bool = False) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
             Parameters:
                 - cube_data        =  datacube path
                 - grid_parameters  =  grid parameter object
+                - pop_age_par      =  dictionary with population age ranges, ex: {"name_pop": [age_ini_exclusive, age_fin_inclusive]}
+                - sfr_age_par      =  dictionary with star formation rate age ranges, ex: {"name_sfr": [age_ini_exclusive, age_fin_inclusive]}
+                - fc_par           =  dictionary with featurless continuum exponent ranges, ex: {"name_fc": [exp_ini_exclusive, exp_fin_inclusive]}
+                - bb_par           =  dictionary with black body temperature (kelvin) ranges, ex: {"name_bb": [temp_ini_exclusive, temp_fin_inclusive]}
                 - galaxy_distance  =  galaxy distance in Mpc
                 - norm_factor      =  flux normalization factor
                 - flux_unit        =  flux unit name
@@ -100,6 +104,9 @@ class StarlightWrapper(ABC):
         # Set specific cube parameters
         self._name_prefix = str(uuid.uuid4()).split("-", maxsplit=1)[0]
         self._pop_age = pop_age_par
+        self._sfr_age = sfr_age_par
+        self._fc_par = fc_par
+        self._bb_par = bb_par
         self._redshift = redshift
         self._galaxy_distance = galaxy_distance
         self._norm_factor = norm_factor
@@ -451,7 +458,12 @@ class StarlightGeneric(StarlightWrapper):
         return base_age_metal
 
     def _add_popbins_hdu(self) -> None:
-        self._add_fc_data_to_popbins_hdu()
+        if len(self._fc_par) > 0:
+            self._add_fc_data_to_popbins_hdu()
+            
+        if len(self._bb_par) > 0:
+            self._add_bb_data_to_popbins_hdu()
+
         self._add_population_data_to_popbins_hdu()
         self._add_star_formation_rate_data_to_popbins_hdu()
         self._add_other_data_to_popbins_hdu()
@@ -534,13 +546,24 @@ class StarlightGeneric(StarlightWrapper):
         self._hdu_list.append(hdu)
 
     def _add_fc_data_to_popbins_hdu(self) -> None:
-        self._add_card_and_data(card_name="FC",
-                                card_comment="Featureless continuum",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._pop_by_light(x, -np.inf, 0.)))
+        for name, exponent in self._fc_par.items():
+            card_n = f"{name}"
+            card_comment = f"Featureless continuum for exponentes between {exponent[0]} and {exponent[1]}",
+            self._add_card_and_data(card_name=card_n,
+                                    card_comment=card_comment,
+                                    data_matrix=self._property_matrix(
+                                        lambda x: self._fc_component(x, exponent[0], exponent[1])))
 
-    def _add_population_data_to_popbins_hdu(self):
+    def _add_bb_data_to_popbins_hdu(self) -> None:
+        for name, temp in self._bb_par.items():
+            card_n = f"{name}"
+            card_comment = f"Black body for temperatures between {temp[0]} and {temp[1]} Kelvin",
+            self._add_card_and_data(card_name=card_n,
+                                    card_comment=card_comment,
+                                    data_matrix=self._property_matrix(
+                                        lambda x: self._bb_component(x, temp[0], temp[1])))
 
+    def _add_population_data_to_popbins_hdu(self) -> None:
         for name, age in self._pop_age.items():
             card_n = f"{name}_light"
             card_comment = f"Light binned pop: {age[0]:.1E} < age <= {age[1]:.1E}"
@@ -563,53 +586,20 @@ class StarlightGeneric(StarlightWrapper):
                 )
             )
 
-    def _add_star_formation_rate_data_to_popbins_hdu(self):
-        self._add_card_and_data(card_name="SFR_1",
-                                card_comment="for age <= 1 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 1E6)))
+    def _add_star_formation_rate_data_to_popbins_hdu(self) -> None:
 
-        self._add_card_and_data(card_name="SFR_5",
-                                card_comment="for age <= 5 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 5E6)))
+        for name, age in self._sfr_age.items():
+            card_n = f"{name}"
+            card_comment = f"for ages between {age[0]:.1E} and {age[1]:.1E} years"
+            self._add_card_and_data(
+                card_name=card_n,
+                card_comment=card_comment,
+                data_matrix=self._property_matrix(
+                    lambda x: self._sfr_at_age(x, age[0], age[1])
+                )
+            )
 
-        self._add_card_and_data(card_name="SFR_10",
-                                card_comment="for age <= 10 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 10E6)))
-
-        self._add_card_and_data(card_name="SFR_14",
-                                card_comment="for age <= 14 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 14E6)))
-
-        self._add_card_and_data(card_name="SFR_20",
-                                card_comment="for age <= 20 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 20E6)))
-
-        self._add_card_and_data(card_name="SFR_30",
-                                card_comment="for age <= 30 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 30E6)))
-
-        self._add_card_and_data(card_name="SFR_56",
-                                card_comment="for age <= 56 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 56E6)))
-
-        self._add_card_and_data(card_name="SFR_100",
-                                card_comment="for age <= 100 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 100E6)))
-
-        self._add_card_and_data(card_name="SFR_200",
-                                card_comment="for age <= 200 Myrs",
-                                data_matrix=self._property_matrix(
-                                    lambda x: self._sfr_at_age(x, 0, 200E6)))
-
-    def _add_other_data_to_popbins_hdu(self):
+    def _add_other_data_to_popbins_hdu(self) -> None:
         self._add_card_and_data(card_name="Av",
                                 card_comment="Optical extinction",
                                 data_matrix=self._property_matrix(lambda x: x.av_min))
@@ -757,36 +747,79 @@ class StarlightGeneric(StarlightWrapper):
         gd_factor = unit_conv * (3.08567758E24 * self._galaxy_distance) ** 2.
         return gd_factor
 
-    def _pop_by_light(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
-        age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
+    def _fc_component(self, sl_out: StarlightOutput, exp_min: float, exp_max: float) -> float:
 
-        valid_age = sl_out.age_j > 0
-        total_x_j = np.sum(sl_out.x_j[valid_age])
+        only_fc = np.array([j.lower().startswith("agn_fc") for j in sl_out.component_j])
+        fc_j = sl_out[only_fc]
+
+        valid_exp = []
+        for fc in fc_j:
+            exp_val = float(fc.lower().lstrip("agn_fc_"))
+            valid_exp.append(exp_val > exp_min and exp_val <= exp_max)
+        valid_exp = np.array(valid_exp)
+
+        total_x_j = np.sum(sl_out.x_j)
         if total_x_j <= 0.:
             return 0
         sum_factor = 100. / total_x_j
 
-        return np.sum(sl_out.x_j[age_index]) * sum_factor
+        return np.sum(fc_j[valid_exp]) * sum_factor
+
+    def _bb_component(self, sl_out: StarlightOutput, temp_min: float, temp_max: float) -> float:
+
+        only_fc = np.array([j.lower().startswith("agn_bb") for j in sl_out.component_j])
+        bb_j = sl_out[only_fc]
+
+        valid_exp = []
+        for bb in bb_j:
+            temp_val = float(bb.lower().lstrip("agn_bb_"))
+            valid_exp.append(temp_val > temp_min and temp_val <= temp_max)
+        valid_exp = np.array(valid_exp)
+
+        total_x_j = np.sum(sl_out.x_j)
+        if total_x_j <= 0.:
+            return 0
+        sum_factor = 100. / total_x_j
+
+        return np.sum(bb_j[valid_exp]) * sum_factor
+
+    def _pop_by_light(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
+        age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
+
+        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
+        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
+
+        total_x_j = np.sum(sl_out.x_j)
+        if total_x_j <= 0.:
+            return 0
+        sum_factor = 100. / total_x_j
+
+        return np.sum(sl_out.x_j[age_index * exclude_bb * exclude_fc]) * sum_factor
 
     def _pop_by_mass(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
-
-        valid_age = sl_out.age_j > 0
-        total_m_j = np.sum(sl_out.m_cor_j[valid_age])
+        
+        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
+        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
+        
+        total_m_j = np.sum(sl_out.m_cor_j)
         if total_m_j <= 0.:
             return 0
         sum_factor = 100. / total_m_j
 
-        return np.sum(sl_out.m_cor_j[age_index]) * sum_factor
+        return np.sum(sl_out.m_cor_j[age_index * exclude_bb * exclude_fc]) * sum_factor
 
     def _sfr_at_age(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         m_cor_t = self._m_cor_t(sl_out)
+
+        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
+        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
 
         age_range = age_max - age_min
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
 
         m_total_factor = m_cor_t / (100. * age_range)
-        sfr_value = np.sum(sl_out.m_ini_j[age_index]) * m_total_factor
+        sfr_value = np.sum(sl_out.m_ini_j[age_index * exclude_bb * exclude_fc]) * m_total_factor
 
         return sfr_value
 
@@ -801,7 +834,6 @@ class StarlightGeneric(StarlightWrapper):
         return cards
 
     def _redshifted_wave_array(self, flux_header: fits.Header, z_size: int) -> np.ndarray:
-
         delta_name = "CDELT3" if "CDELT3" in flux_header else "CD3_3"
 
         dt_wave = flux_header[delta_name]
