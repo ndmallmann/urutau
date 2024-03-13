@@ -87,7 +87,7 @@ class StarlightWrapper(ABC):
                 - grid_parameters  =  grid parameter object
                 - pop_age_par      =  dictionary with population age ranges, ex: {"name_pop": [age_ini_exclusive, age_fin_inclusive]}
                 - sfr_age_par      =  dictionary with star formation rate age ranges, ex: {"name_sfr": [age_ini_exclusive, age_fin_inclusive]}
-                - fc_par           =  dictionary with featurless continuum exponent ranges, ex: {"name_fc": [exp_ini_exclusive, exp_fin_inclusive]}
+                - fc_par           =  dictionary with featureless continuum exponent ranges, ex: {"name_fc": [exp_ini_exclusive, exp_fin_inclusive]}
                 - bb_par           =  dictionary with black body temperature (kelvin) ranges, ex: {"name_bb": [temp_ini_exclusive, temp_fin_inclusive]}
                 - galaxy_distance  =  galaxy distance in Mpc
                 - norm_factor      =  flux normalization factor

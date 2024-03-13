@@ -28,7 +28,7 @@ class StarlightOnUrutau(AbstractModule):
             - "hdu error" = [Optional] hdu name with error data (default = None)
             - "hdu flag" = [Optional] hdu name with mask data (default = None)
             - "sfr ages" = [Optional] star formation rate age limits (default = {})
-            - "fc exps" = [Optional] featurless continuum exponent limits (default = {})
+            - "fc exps" = [Optional] featureless continuum exponent limits (default = {})
             - "bb temps" = [Optional] black body temperature limits (default = {})
             - "redshift" = [Optional] redshift (for correction) (default = 0.)
             - "normalization factor" = [Optional] flux's normalization value (default = 1.)
