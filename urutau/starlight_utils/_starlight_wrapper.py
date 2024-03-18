@@ -749,8 +749,8 @@ class StarlightGeneric(StarlightWrapper):
 
     def _fc_component(self, sl_out: StarlightOutput, exp_min: float, exp_max: float) -> float:
 
-        only_fc = np.array([j.lower().startswith("agn_fc") for j in sl_out.component_j])
-        fc_j = sl_out[only_fc]
+        only_fc = np.array([j.lower().startswith("agn_fc_") for j in sl_out.component_j])
+        fc_j = sl_out.x_j[only_fc]
 
         valid_exp = []
         for fc in fc_j:
@@ -767,8 +767,8 @@ class StarlightGeneric(StarlightWrapper):
 
     def _bb_component(self, sl_out: StarlightOutput, temp_min: float, temp_max: float) -> float:
 
-        only_fc = np.array([j.lower().startswith("agn_bb") for j in sl_out.component_j])
-        bb_j = sl_out[only_fc]
+        only_fc = np.array([j.lower().startswith("agn_bb_") for j in sl_out.component_j])
+        bb_j = sl_out.x_j[only_fc]
 
         valid_exp = []
         for bb in bb_j:
