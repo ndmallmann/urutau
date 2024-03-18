@@ -767,21 +767,21 @@ class StarlightGeneric(StarlightWrapper):
 
     def _bb_component(self, sl_out: StarlightOutput, temp_min: float, temp_max: float) -> float:
 
-        only_fc = np.array([j.lower().startswith("agn_bb_") for j in sl_out.component_j])
-        bb_j = sl_out.x_j[only_fc]
+        only_bb = np.array([j.lower().startswith("agn_bb_") for j in sl_out.component_j])
+        bb_j = sl_out.x_j[only_bb]
 
-        valid_exp = []
+        valid_temp = []
         for bb in bb_j:
             temp_val = float(bb.lower().lstrip("agn_bb_"))
-            valid_exp.append(temp_val > temp_min and temp_val <= temp_max)
-        valid_exp = np.array(valid_exp)
+            valid_temp.append(temp_val > temp_min and temp_val <= temp_max)
+        valid_temp = np.array(valid_temp)
 
         total_x_j = np.sum(sl_out.x_j)
         if total_x_j <= 0.:
             return 0
         sum_factor = 100. / total_x_j
 
-        return np.sum(bb_j[valid_exp]) * sum_factor
+        return np.sum(bb_j[valid_temp]) * sum_factor
 
     def _pop_by_light(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
