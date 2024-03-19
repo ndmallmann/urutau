@@ -6,7 +6,6 @@
 import itertools as it
 import math
 import os
-import queue
 import re
 import subprocess as sp
 import threading as th
@@ -752,9 +751,12 @@ class StarlightGeneric(StarlightWrapper):
         only_fc = np.array([j.lower().startswith("agn_fc_") for j in sl_out.component_j])
         fc_j = sl_out.x_j[only_fc]
 
+        no_extension = re.compile(r"\.[A-Za-z0-9]+$")
+
         valid_exp = []
         for fc in fc_j:
-            exp_val = float(fc.lower().lstrip("agn_fc_"))
+            fc_no_extension = re.sub(fc.lower(), "", no_extension)
+            exp_val = float(fc_no_extension.lstrip("agn_fc_"))
             valid_exp.append(exp_val > exp_min and exp_val <= exp_max)
         valid_exp = np.array(valid_exp)
 
@@ -770,9 +772,12 @@ class StarlightGeneric(StarlightWrapper):
         only_bb = np.array([j.lower().startswith("agn_bb_") for j in sl_out.component_j])
         bb_j = sl_out.x_j[only_bb]
 
+        no_extension = re.compile(r"\.[A-Za-z0-9]+$")
+
         valid_temp = []
         for bb in bb_j:
-            temp_val = float(bb.lower().lstrip("agn_bb_"))
+            bb_no_extension = re.sub(bb.lower(), "", no_extension)
+            temp_val = float(bb_no_extension.lstrip("agn_bb_"))
             valid_temp.append(temp_val > temp_min and temp_val <= temp_max)
         valid_temp = np.array(valid_temp)
 
