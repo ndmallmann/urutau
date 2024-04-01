@@ -757,7 +757,7 @@ class StarlightGeneric(StarlightWrapper):
 
         valid_exp = []
         for fc in fc_name_j:
-            fc_no_extension = re.sub(fc.lower(), "", no_extension)
+            fc_no_extension = re.sub(no_extension, "", fc.lower())
             exp_val = float(fc_no_extension.lstrip("agn_fc_"))
             valid_exp.append(exp_val > exp_min and exp_val <= exp_max)
         valid_exp = np.array(valid_exp)
@@ -780,7 +780,7 @@ class StarlightGeneric(StarlightWrapper):
 
         valid_temp = []
         for bb in bb_name_j:
-            bb_no_extension = re.sub(bb.lower(), "", no_extension)
+            bb_no_extension = re.sub(no_extension, "", bb.lower())
             temp_val = float(bb_no_extension.lstrip("agn_bb_"))
             valid_temp.append(temp_val > temp_min and temp_val <= temp_max)
         valid_temp = np.array(valid_temp)
