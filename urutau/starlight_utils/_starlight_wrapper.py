@@ -547,7 +547,7 @@ class StarlightGeneric(StarlightWrapper):
     def _add_fc_data_to_popbins_hdu(self) -> None:
         for name, exponent in self._fc_par.items():
             card_n = f"{name}"
-            card_comment = f"Featureless continuum: {exponent[0]:.2} < exp <= {exponent[1]:.2}",
+            card_comment = f"Featureless continuum: {exponent[0]:.2f} < exp <= {exponent[1]:.2f}",
             self._add_card_and_data(card_name=card_n,
                                     card_comment=card_comment,
                                     data_matrix=self._property_matrix(
