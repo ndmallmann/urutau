@@ -749,12 +749,14 @@ class StarlightGeneric(StarlightWrapper):
     def _fc_component(self, sl_out: StarlightOutput, exp_min: float, exp_max: float) -> float:
 
         only_fc = np.array([j.lower().startswith("agn_fc_") for j in sl_out.component_j])
-        fc_j = sl_out.x_j[only_fc]
+        
+        fc_contribution_j = sl_out.x_j[only_fc]
+        fc_name_j = sl_out.component_j[only_fc]
 
         no_extension = re.compile(r"\.[A-Za-z0-9]+$")
 
         valid_exp = []
-        for fc in fc_j:
+        for fc in fc_name_j:
             fc_no_extension = re.sub(fc.lower(), "", no_extension)
             exp_val = float(fc_no_extension.lstrip("agn_fc_"))
             valid_exp.append(exp_val > exp_min and exp_val <= exp_max)
@@ -765,17 +767,19 @@ class StarlightGeneric(StarlightWrapper):
             return 0
         sum_factor = 100. / total_x_j
 
-        return np.sum(fc_j[valid_exp]) * sum_factor
+        return np.sum(fc_contribution_j[valid_exp]) * sum_factor
 
     def _bb_component(self, sl_out: StarlightOutput, temp_min: float, temp_max: float) -> float:
 
         only_bb = np.array([j.lower().startswith("agn_bb_") for j in sl_out.component_j])
-        bb_j = sl_out.x_j[only_bb]
+        
+        bb_contribution_j = sl_out.x_j[only_bb]
+        bb_name_j = sl_out.component_j[only_bb]
 
         no_extension = re.compile(r"\.[A-Za-z0-9]+$")
 
         valid_temp = []
-        for bb in bb_j:
+        for bb in bb_name_j:
             bb_no_extension = re.sub(bb.lower(), "", no_extension)
             temp_val = float(bb_no_extension.lstrip("agn_bb_"))
             valid_temp.append(temp_val > temp_min and temp_val <= temp_max)
@@ -786,13 +790,13 @@ class StarlightGeneric(StarlightWrapper):
             return 0
         sum_factor = 100. / total_x_j
 
-        return np.sum(bb_j[valid_temp]) * sum_factor
+        return np.sum(bb_contribution_j[valid_temp]) * sum_factor
 
     def _pop_by_light(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
 
-        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
-        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
+        exclude_bb = np.array([not j.lower().startswith("agn_bb_") for j in sl_out.component_j])
+        exclude_fc = np.array([not j.lower().startswith("agn_fc_") for j in sl_out.component_j])
 
         total_x_j = np.sum(sl_out.x_j)
         if total_x_j <= 0.:
