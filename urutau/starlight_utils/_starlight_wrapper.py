@@ -547,7 +547,7 @@ class StarlightGeneric(StarlightWrapper):
     def _add_fc_data_to_popbins_hdu(self) -> None:
         for name, exponent in self._fc_par.items():
             card_n = f"{name}"
-            card_comment = f"Featureless continuum for exponentes between {exponent[0]} and {exponent[1]}",
+            card_comment = f"Featureless continuum: {exponent[0]:.2} < exp <= {exponent[1]:.2}",
             self._add_card_and_data(card_name=card_n,
                                     card_comment=card_comment,
                                     data_matrix=self._property_matrix(
@@ -556,7 +556,7 @@ class StarlightGeneric(StarlightWrapper):
     def _add_bb_data_to_popbins_hdu(self) -> None:
         for name, temp in self._bb_par.items():
             card_n = f"{name}"
-            card_comment = f"Black body for temperatures between {temp[0]} and {temp[1]} Kelvin",
+            card_comment = f"Black body: {temp[0]} < temp (K) <= {temp[1]}",
             self._add_card_and_data(card_name=card_n,
                                     card_comment=card_comment,
                                     data_matrix=self._property_matrix(
