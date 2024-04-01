@@ -16,6 +16,8 @@ They are very popular libraries used in astronomy, but, in case they are not ins
 
 ## Installation
 
+### Native installation
+
 In order to install the package, just run the following command on your terminal:
 
 ```
@@ -28,6 +30,16 @@ Alternatively, you could clone the repository and install it using the following
 git clone https://github.com/ndmallmann/urutau.git
 pip install urutau/
 ```
+
+### Using CONDA enviroments
+
+```
+conda create -n urutau python=3.10 
+source activate urutau
+pip install urutau@git+https://github.com/ndmallmann/urutau.git
+```
+
+
 
 ## How does it Work?
 
