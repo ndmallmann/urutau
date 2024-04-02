@@ -243,3 +243,5 @@ def nirspec_JWST():
     urutau.execute("./runs/", save_config=True, debug=True)
 if __name__=="__main__":
     nirspec_JWST()
+
+just save this in a scrip to run it. 
