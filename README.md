@@ -127,26 +127,26 @@ from urutau.modules import (
 
 def nirspec_JWST():
     
-# Start urutau with 3 threads
+    # Start urutau with 3 threads
     urutau = Urutau(num_threads = 1)
 
-# First spatial resampler for the data hdu (NOT used here. To use it change the HDUs on the next steps acordingly)
-#    data_spat_resample_cfg = {
-#        "hdu target": "SCI",
-#        "data type": "flux",
-#        "resample size": 2
-#    }
-#    urutau.add_module(SpatialResampler, data_spat_resample_cfg)
+    # First spatial resampler for the data hdu (NOT used here. To use it change the HDUs on the next steps acordingly)
+    #    data_spat_resample_cfg = {
+    #        "hdu target": "SCI",
+    #        "data type": "flux",
+    #        "resample size": 2
+    #    }
+    #    urutau.add_module(SpatialResampler, data_spat_resample_cfg)
 
-#    # Second spatial resampler for the stat hdu
-#    stat_spat_resample_cfg = {
-#        "hdu target": "ERR",
-#        "data type": "error",
-#        "resample size": 2
-#    }
-#    urutau.add_module(SpatialResampler, stat_spat_resample_cfg)
+    #    # Second spatial resampler for the stat hdu
+    #    stat_spat_resample_cfg = {
+    #        "hdu target": "ERR",
+    #        "data type": "error",
+    #        "resample size": 2
+    #    }
+    #    urutau.add_module(SpatialResampler, stat_spat_resample_cfg)
 
-# First spectral resampler for the data hdu
+    # First spectral resampler for the data hdu
     data_spec_resample_cfg = {
         "hdu target": "SCI",
         "data type": "flux",
@@ -162,25 +162,25 @@ def nirspec_JWST():
     }
     urutau.add_module(SpectralResampler, stat_spec_resample_cfg)
 
-#    # Degrade resolving power for the data hdu
-#    data_degrade_cfg = {
-#        "hdu target": "DATA_RSP_BIN",
-#        "data type": "flux",
-#        "r input": 3027,
-#        "r output": 2000
-#    }
-#    urutau.add_module(DegradeData, data_degrade_cfg)
+    #    # Degrade resolving power for the data hdu
+    #    data_degrade_cfg = {
+    #        "hdu target": "DATA_RSP_BIN",
+    #        "data type": "flux",
+    #        "r input": 3027,
+    #        "r output": 2000
+    #    }
+    #    urutau.add_module(DegradeData, data_degrade_cfg)
 
-#    # Degrade resolving power for the stat hdu
-#    data_degrade_cfg = {
-#        "hdu target": "STAT_RSP_BIN",
-#        "data type": "variance",
-#        "r input": 3027,
-#        "r output": 2000
-#    }
-#    urutau.add_module(DegradeData, data_degrade_cfg)
+    #    # Degrade resolving power for the stat hdu
+    #    data_degrade_cfg = {
+    #        "hdu target": "STAT_RSP_BIN",
+    #        "data type": "variance",
+    #        "r input": 3027,
+    #        "r output": 2000
+    #    }
+    #    urutau.add_module(DegradeData, data_degrade_cfg)
 
-# Signal To Noise Mask With Error
+    # Signal To Noise Mask With Error
     sn_mask_cfg = {
         "hdu flux": "SCI_BIN",
         "hdu error": "ERR_BIN",
@@ -189,7 +189,7 @@ def nirspec_JWST():
     }
     urutau.add_module(SNMaskWithError, sn_mask_cfg)
 
-   # Run Starlight
+    # Run Starlight
     population_ages = {
         "xyy": (2., 1E7),
         "xyo": (1E7, 5.6E7),
@@ -198,13 +198,13 @@ def nirspec_JWST():
         "xio": (8E8, 2E9),
         "xo": (2E9, 13E9)
     }
- # SFR from stellar populations (see Riffel+2021 for details)
+    # SFR from stellar populations (see Riffel+2021 for details)
     sfr_age_par = {
     "SFR_100": (2.,1.E8),
     "SFR_200": (2.,2.E8)
     }
 
- # AGN featureless  and hot dust components (see Riffel+2009 for details)
+    # AGN featureless  and hot dust components (see Riffel+2009 for details)
     fc_par = {
     "FC_25":  (0.25,0.25),
     "FC_50":  (0.5,0.5),
@@ -218,7 +218,7 @@ def nirspec_JWST():
     "BB_Tot": (699,1400)
     }
     
- # Setting up all the configurations 
+    # Setting up all the configurations 
     starlight_cfg = {
         "starlight path": "/home/riffel/WorkOn/nirspec_JWST/starlight/StarlightChains.exe",
         "default grid file": "/home/riffel/WorkOn/nirspec_JWST/starlight/grid_example.inp",
