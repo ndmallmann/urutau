@@ -247,4 +247,4 @@ def nirspec_JWST():
 if __name__=="__main__":
     nirspec_JWST()
 
-just save this in a scrip to run it. 
+just save this in a script to run it or download it [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
