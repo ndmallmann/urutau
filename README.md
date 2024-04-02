@@ -108,8 +108,11 @@ Here is an [example](/examples/creating_modules/creating_simple.py) of how to cr
 
 ## Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
 
+You can see the script [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
+
+
 """
-    Urutau for JWST NIRSPEC
+    Urutau to run starlight on JWST NIRSPEC datacubes
 """
 
 from urutau import Urutau
