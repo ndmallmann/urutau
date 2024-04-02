@@ -241,6 +241,5 @@ def nirspec_JWST():
 
     # Execute urutau
     urutau.execute("./runs/", save_config=True, debug=True)
-
 if __name__=="__main__":
     nirspec_JWST()
