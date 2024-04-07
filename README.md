@@ -79,42 +79,11 @@ This snippet of code uses one single module (SpatialResampler) to resize the spa
 
 See another example code [here](/examples/using_urutau/using_urutau.py).
 
-## Creating Modules
+### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
 
-Urutau wouldn't be very useful without the possibility of creating modules for the pipeline.
-
-In order to create a module, the user needs to import the base module (an abstract class) created for this software as exemplified here:
+You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py) 
 
 ```
-from astropy.io import fits
-from urutau.modules import AbstractModule
-
-class MyModule(AbstractModule):
-    """
-        My module doc
-    """
-
-    def _set_init_default_parameters(self) -> None:
-        ...
-
-    def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
-        ...
-```
-
-as a requirement, the module must define the methods "_set_init_default_parameters" and "execute".
-
-Here is an [example](/examples/creating_modules/creating_simple.py) of how to create a very simple module.
-
-
-## Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
-
-You can see the script [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
-
-
-"""
-    Urutau to run starlight on JWST NIRSPEC datacubes
-"""
-
 from urutau import Urutau
 
 from urutau.modules import (
@@ -125,7 +94,6 @@ from urutau.modules import (
     StarlightOnUrutau,
     SNMaskWithError,
 )
-
 
 
 def nirspec_JWST():
@@ -192,7 +160,10 @@ def nirspec_JWST():
     }
     urutau.add_module(SNMaskWithError, sn_mask_cfg)
 
-    # Run Starlight
+    
+    # Starlight Module
+    
+    # Stellar populations ages parameter
     population_ages = {
         "xyy": (2., 1E7),
         "xyo": (1E7, 5.6E7),
@@ -201,24 +172,25 @@ def nirspec_JWST():
         "xio": (8E8, 2E9),
         "xo": (2E9, 13E9)
     }
+
     # SFR from stellar populations (see Riffel+2021 for details)
     sfr_age_par = {
-    "SFR_100": (2.,1.E8),
-    "SFR_200": (2.,2.E8)
+        "SFR_100": (2.,1.E8),
+        "SFR_200": (2.,2.E8)
     }
 
-    # AGN featureless  and hot dust components (see Riffel+2009 for details)
+    # AGN featureless and hot dust components (see Riffel+2009 for details)
     fc_par = {
-    "FC_25":  (0.25,0.25),
-    "FC_50":  (0.5,0.5),
-    "FC_75":  (0.75,0.75),
-    "FC_tot": (0.245,0.75)
+        "FC_25":  (0.25,0.25),
+        "FC_50":  (0.5,0.5),
+        "FC_75":  (0.75,0.75),
+        "FC_tot": (0.245,0.75)
     }
     
     bb_par = {
-    "BB_Cool": (699,1000),
-    "BB_hot": (1000,1400),
-    "BB_Tot": (699,1400)
+        "BB_Cool": (699,1000),
+        "BB_hot": (1000,1400),
+        "BB_Tot": (699,1400)
     }
     
     # Setting up all the configurations 
@@ -244,7 +216,37 @@ def nirspec_JWST():
 
     # Execute urutau
     urutau.execute("./runs/", save_config=True, debug=True)
+
+
 if __name__=="__main__":
     nirspec_JWST()
+```
 
 just save this in a script to run it or download it [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
+
+
+## Creating Modules
+
+Urutau wouldn't be very useful without the possibility of creating modules for the pipeline.
+
+In order to create a module, the user needs to import the base module (an abstract class) created for this software as exemplified here:
+
+```
+from astropy.io import fits
+from urutau.modules import AbstractModule
+
+class MyModule(AbstractModule):
+    """
+        My module doc
+    """
+
+    def _set_init_default_parameters(self) -> None:
+        ...
+
+    def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
+        ...
+```
+
+as a requirement, the module must define the methods "_set_init_default_parameters" and "execute".
+
+Here is an [example](/examples/creating_modules/creating_simple.py) of how to create a very simple module.
