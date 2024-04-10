@@ -1,5 +1,4 @@
 # Urutau
-test
 Urutau is a modular pipeline tool developed to work with fits files and multithreading.
 
 [![DOI](https://zenodo.org/badge/633615260.svg)](https://zenodo.org/badge/latestdoi/633615260)
