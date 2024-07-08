@@ -355,22 +355,14 @@ manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
 
 # example of the starlight reference grid file 
 1                                                     [Number of fits to run]
-
 /basesdir/                                            [base_dir]
-
 /obsdir/                                              [obs_dir]
-
 /mask_dir/                                            [mask_dir]
-
 /Output/                                              [out_dir]
 123456                                                [your phone number]
-
 5650.0                                                [llow_SN]   lower-lambda of S/N window
-
 5750.0                                                [lupp_SN]   upper-lambda of S/N window
-
 4800.0                                                [Olsyn_ini] lower-lambda for fit
-
 6850.0                                                [Olsyn_fin] upper-lambda for fit
 
 1.0                                                   [Odlsyn]    delta-lambda for fit
