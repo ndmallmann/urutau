@@ -251,7 +251,7 @@ just save this in a script to run it or download it [here](/examples/run_starilg
 
 
 
-# Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
+## Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
 
 You can see the script [here](/examples/run_starilght/run_urutau_manga.py) 
 
@@ -346,14 +346,14 @@ if __name__=="__main__":
     quick_manga()
 
 
-# example of the CSV file
+## example of the CSV file
 
 target,redshift,galaxy distance,ebv
 
 manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
 
 
-# example of the starlight reference grid file 
+## example of the starlight reference grid file 
 1                                                     [Number of fits to run]
 
 /basesdir/                                            [base_dir]
