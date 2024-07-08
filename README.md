@@ -255,132 +255,118 @@ just save this in a script to run it or download it [here](/examples/run_starilg
 
 You can see the script [here](/examples/run_starilght/run_urutau_manga.py) 
 
-"""
-    Urutau for MANGA
-"""
 
-from urutau import Urutau
+    """
+        Urutau for MANGA
+    """
 
-from urutau.modules import (
-    SpatialResampler,
-    SpectralResampler,
-    ButterworthFilter,
-    DegradeData,
-    SNMaskWithVar,
-    SNMaskWithIVar,
-    StarlightOnUrutau,
-)
+    from urutau import Urutau
 
-
-
-def quick_manga():
-    
-    # Start urutau with 3 threads
-    urutau = Urutau(num_threads = 1)
-
-    # First BW filter for the data hdu
-    data_BW_cfg = {
-        "hdu flux": "FLUX",
-        "order": 3,
-        "range": 0.3
-    }
-    urutau.add_module(ButterworthFilter, data_BW_cfg)
-
-
-    # Run Starlight
-    population_ages = {
-        "xyy": (0., 1E7),
-        "xyo": (1E7, 5.6E7),
-        "xiy": (5.6E7, 5E8),
-        "xii": (5E8, 8E8),
-        "xio": (8E8, 2E9),
-        "xo": (2E9, 13E9)
-    }
-    
-    # Just an example
-    sfr_age_par = {
-
-    "SFR_1E6": (2,1.001E6), 
-	"SFR_5E6": (2,5.621E6), 
-	"SFR_10E6": (2,10.001E6),
-	"SFR_14E6":(2,14.1001E6),
-	"SFR_20E6": (2,20.001E6),
-	"SFR_30E6": (2,31.6001E6),
-	"SFR_56E6": (2,56.201E6),
-	"SFR_100E6":(2,100.001E6),
-	"SFR_200E6": (2,200.001E6)
-    }
+    from urutau.modules import (
+        SpatialResampler,
+        SpectralResampler,
+        ButterworthFilter,
+        DegradeData,
+        SNMaskWithVar,
+        SNMaskWithIVar,
+        StarlightOnUrutau,
+    )
 
 
 
-    # AGN featureless just an example
-    fc_par = {
-    "FC_150": (1.49,1.51)
-    }
-    
-    
-    # Note that you can use the MaNGA spectral Mask in the hdu flag
-    starlight_cfg = {
-        "starlight path": "./starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
-        "default grid file": "./starlight/reference_grid_manga.in",
-        "hdu flux": "FLUX_BW",
-        "hdu ivar": "IVAR",
-        "hdu flag": "SN_MASKS_1",
-        "number of threads": 16 ,
-        "population ages": population_ages,
-		"sfr ages" : sfr_age_par,
-        "fc exps": fc_par,
-		"keep tmp": True
+    def quick_manga():
+        
+        # Start urutau with 3 threads
+        urutau = Urutau(num_threads = 1)
 
-    }
-    urutau.add_module(StarlightOnUrutau, starlight_cfg)
+        # First BW filter for the data hdu
+        data_BW_cfg = {
+            "hdu flux": "FLUX",
+            "order": 3,
+            "range": 0.3
+        }
+        urutau.add_module(ButterworthFilter, data_BW_cfg)
 
-    # Load targets
-    urutau.read_csv(targets_dir="./mangaTest/",
-                    csv_file="./mangaTest/targets.csv")
 
-    # Execute urutau
-    urutau.execute("./mangaTest/out/", save_config=True, debug=True)
+        # Run Starlight
+        population_ages = {
+            "xyy": (0., 1E7),
+            "xyo": (1E7, 5.6E7),
+            "xiy": (5.6E7, 5E8),
+            "xii": (5E8, 8E8),
+            "xio": (8E8, 2E9),
+            "xo": (2E9, 13E9)
+        }
+        
+        # Just an example
+        sfr_age_par = {
 
-if __name__=="__main__":
-    quick_manga()
+        "SFR_1E6": (2,1.001E6), 
+        "SFR_5E6": (2,5.621E6), 
+        "SFR_10E6": (2,10.001E6),
+        "SFR_14E6":(2,14.1001E6),
+        "SFR_20E6": (2,20.001E6),
+        "SFR_30E6": (2,31.6001E6),
+        "SFR_56E6": (2,56.201E6),
+        "SFR_100E6":(2,100.001E6),
+        "SFR_200E6": (2,200.001E6)
+        }
+
+
+
+        # AGN featureless just an example
+        fc_par = {
+        "FC_150": (1.49,1.51)
+        }
+        
+        
+        # Note that you can use the MaNGA spectral Mask in the hdu flag
+        starlight_cfg = {
+            "starlight path": "./starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
+            "default grid file": "./starlight/reference_grid_manga.in",
+            "hdu flux": "FLUX_BW",
+            "hdu ivar": "IVAR",
+            "hdu flag": "SN_MASKS_1",
+            "number of threads": 16 ,
+            "population ages": population_ages,
+            "sfr ages" : sfr_age_par,
+            "fc exps": fc_par,
+            "keep tmp": True
+
+        }
+        urutau.add_module(StarlightOnUrutau, starlight_cfg)
+
+        # Load targets
+        urutau.read_csv(targets_dir="./mangaTest/",
+                        csv_file="./mangaTest/targets.csv")
+
+        # Execute urutau
+        urutau.execute("./mangaTest/out/", save_config=True, debug=True)
+
+    if __name__=="__main__":
+        quick_manga()
 
 
 ## example of the CSV file
 
-target,redshift,galaxy distance,ebv
-
-manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
+    target,redshift,galaxy distance,ebv
+    manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
 
 
 ## example of the starlight reference grid file 
-1                                                     [Number of fits to run]
-
-/basesdir/                                            [base_dir]
-
-/obsdir/                                              [obs_dir]
-
-/mask_dir/                                            [mask_dir]
-
-/Output/                                              [out_dir]
-123456                                                [your phone number]
-
-5650.0                                                [llow_SN]   lower-lambda of S/N window
-
-5750.0                                                [lupp_SN]   upper-lambda of S/N window
-
-4800.0                                                [Olsyn_ini] lower-lambda for fit
-
-6850.0                                                [Olsyn_fin] upper-lambda for fit
-
-1.0                                                   [Odlsyn]    delta-lambda for fit
-
-1.0                                                   [fscale_chi2] fudge-factor for chi2
-
-FIT                                                   [FIT/FXK] Fit or Fix kinematics
-
-1                                                     [IsErrSpecAvailable]  1/0 = Yes/No
-
-1                                                     [IsFlagSpecAvailable] 1/0 = Yes/No
-
-mock.spec   StCv04.C11.config   BaseM23UN130SY   Masks.EmLines.SDSS.gm   CCM   0.0   150.0   mock_out.spec
+    1                                                     [Number of fits to run]
+    /basesdir/                                            [base_dir]
+    /obsdir/                                              [obs_dir]
+    /mask_dir/                                            [mask_dir]
+    /Output/                                              [out_dir]
+    123456                                                [your phone number]
+    5650.0                                                [llow_SN]   lower-lambda of S/N window
+    5750.0                                                [lupp_SN]   upper-lambda of S/N window
+    4800.0                                                [Olsyn_ini] lower-lambda for fit
+    6850.0                                                [Olsyn_fin] upper-lambda for fit
+    1.0                                                   [Odlsyn]    delta-lambda for fit
+    1.0                                                   [fscale_chi2] fudge-factor for chi2
+    FIT                                                   [FIT/FXK] Fit or Fix kinematics
+    1                                                     [IsErrSpecAvailable]  1/0 = Yes/No
+    1                                                     [IsFlagSpecAvailable] 1/0 = Yes/No
+    mock.spec   StCv04.C11.config   BaseM23UN130SY   Masks.EmLines.SDSS.gm   CCM   0.0   150.0   mock_out.spec
