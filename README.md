@@ -78,38 +78,13 @@ This snippet of code uses one single module (SpatialResampler) to resize the spa
 
 See another example code [here](/examples/using_urutau/using_urutau.py).
 
-## Creating Modules
 
-Urutau wouldn't be very useful without the possibility of creating modules for the pipeline.
+### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
 
-In order to create a module, the user needs to import the base module (an abstract class) created for this software as exemplified here:
+You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py) 
+
 
 ```
-from astropy.io import fits
-from urutau.modules import AbstractModule
-
-class MyModule(AbstractModule):
-    """
-        My module doc
-    """
-
-    def _set_init_default_parameters(self) -> None:
-        ...
-
-    def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
-        ...
-```
-
-as a requirement, the module must define the methods "_set_init_default_parameters" and "execute".
-
-Here is an [example](/examples/creating_modules/creating_simple.py) of how to create a very simple module.
-
-
-## Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
-
-You can see the script [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
-
-
     """
         Urutau to run starlight on JWST NIRSPEC datacubes
     """
@@ -212,16 +187,16 @@ You can see the script [here](/examples/run_starilght/run_urutau_starlight_nirsp
     if __name__=="__main__":
         nirspec_JWST()
 
+```
+
 just save this in a script to run it or download it [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
 
 
-
-
-## Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
+### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
 
 You can see the script [here](/examples/run_starilght/run_urutau_manga.py) 
 
-
+```
     """
         Urutau for MANGA
     """
@@ -311,15 +286,18 @@ You can see the script [here](/examples/run_starilght/run_urutau_manga.py)
 
     if __name__=="__main__":
         quick_manga()
+```
 
+#### example of the CSV file
 
-## example of the CSV file
-
+```
     target,redshift,galaxy distance,ebv
     manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
+```
 
+#### example of the starlight reference grid file 
 
-## example of the starlight reference grid file 
+```
     1                                                     [Number of fits to run]
     /basesdir/                                            [base_dir]
     /obsdir/                                              [obs_dir]
@@ -336,3 +314,31 @@ You can see the script [here](/examples/run_starilght/run_urutau_manga.py)
     1                                                     [IsErrSpecAvailable]  1/0 = Yes/No
     1                                                     [IsFlagSpecAvailable] 1/0 = Yes/No
     mock.spec   StCv04.C11.config   BaseM23UN130SY   Masks.EmLines.SDSS.gm   CCM   0.0   150.0   mock_out.spec
+
+```
+
+## Creating Modules
+
+Urutau wouldn't be very useful without the possibility of creating modules for the pipeline.
+
+In order to create a module, the user needs to import the base module (an abstract class) created for this software as exemplified here:
+
+```
+from astropy.io import fits
+from urutau.modules import AbstractModule
+
+class MyModule(AbstractModule):
+    """
+        My module doc
+    """
+
+    def _set_init_default_parameters(self) -> None:
+        ...
+
+    def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
+        ...
+```
+
+as a requirement, the module must define the methods "_set_init_default_parameters" and "execute".
+
+Here is an [example](/examples/creating_modules/creating_simple.py) of how to create a very simple module.
