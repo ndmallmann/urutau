@@ -609,7 +609,7 @@ class StarlightGeneric(StarlightWrapper):
 
         self._add_card_and_data(card_name="Mage_M",
                                 card_comment="Mean age mass weigthed",
-                                data_matrix=self._property_matrix(lambda x: self._mean_by_mass(x, x.m_cor_j)))
+                                data_matrix=self._property_matrix(lambda x: self._mean_by_mass(x, np.log10(x.m_cor_j))))
 
         self._add_card_and_data(card_name="MZ_L",
                                 card_comment="Mean metalicity light weigthed",
