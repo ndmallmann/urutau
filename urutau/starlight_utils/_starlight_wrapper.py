@@ -89,7 +89,7 @@ class StarlightWrapper(ABC):
                 - fc_par           =  dictionary with featureless continuum exponent ranges, ex: {"name_fc": [exp_ini_exclusive, exp_fin_inclusive]}
                 - bb_par           =  dictionary with black body temperature (kelvin) ranges, ex: {"name_bb": [temp_ini_exclusive, temp_fin_inclusive]}
                 - galaxy_distance  =  galaxy distance in Mpc
-                - norm_factor      =  flux normalization factor
+                - norm_factor      =  flux normalization factor (to be multiplyed by the spectrum if it was already normalized)
                 - flux_unit        =  flux unit name
                 - redshift         =  galaxy redshift
                 - keep_tmp         =  True/False to keep temporary files
@@ -493,7 +493,7 @@ class StarlightGeneric(StarlightWrapper):
         cards.append(fits.Card("BUNIT", 1, unit_comment))
 
         hdu_data = self._array_matrix(
-            lambda x: x.f_obs * x.fobs_norm * self._norm_factor
+            lambda x: x.f_obs * x.fobs_norm 
         )
         self._add_hdu(name, summary, cards, hdu_data)
 
@@ -507,7 +507,7 @@ class StarlightGeneric(StarlightWrapper):
         cards.append(fits.Card("BUNIT", 1, unit_comment))
 
         hdu_data = self._array_matrix(
-            lambda x: x.f_syn * x.fobs_norm * self._norm_factor
+            lambda x: x.f_syn * x.fobs_norm 
         )
         self._add_hdu(name, summary, cards, hdu_data)
 
@@ -731,13 +731,13 @@ class StarlightGeneric(StarlightWrapper):
 
     def _m_ini_t(self, sl_out: StarlightOutput) -> float:
         gd_factor = self._gd_factor()
-        m_ini_t = self._norm_factor * sl_out.m_ini_tot * gd_factor
+        m_ini_t =  sl_out.m_ini_tot * gd_factor
 
         return m_ini_t
 
     def _m_cor_t(self, sl_out: StarlightOutput) -> float:
         gd_factor = self._gd_factor()
-        m_cor_t = self._norm_factor * sl_out.m_cor_tot * gd_factor
+        m_cor_t =  sl_out.m_cor_tot * gd_factor
 
         return m_cor_t
 
