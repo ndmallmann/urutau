@@ -7,6 +7,7 @@ import itertools as it
 import math
 import os
 import re
+from pathlib import Path
 import subprocess as sp
 import threading as th
 import uuid
@@ -102,8 +103,8 @@ class StarlightWrapper(ABC):
         self._clear_tmp_data()
 
         # Set specific cube parameters
-        self._original_path = Path(cube_data.filename() if cube_data.filename() else "NONE")
-        self._name_prefix = f"{str(uuid.uuid4()).split('-', maxsplit=1)[0]}_{self._original_path.stem}"
+        self._filepath = Path(cube_data.filename()) if cube_data.filename() else Path("NONE")
+        self._name_prefix = f"{str(uuid.uuid4()).split('-', maxsplit=1)[0]}_{self._filepath}"
         self._pop_age = pop_age_par
         self._sfr_age = sfr_age_par
         self._fc_par = fc_par
@@ -664,7 +665,7 @@ class StarlightGeneric(StarlightWrapper):
         self._card_index += 1
 
     def _property_matrix(self, func: Callable[[StarlightOutput], float]) -> np.ndarray:
-        matrix = np.ndarray((self._y_size, self._x_size), dtype=float)*np.nan
+        matrix = np.ndarray((self._y_size, self._x_size), dtype=float) * np.nan
 
         indices = it.product(range(self._y_size), range(self._x_size))
         for j, i in indices:
