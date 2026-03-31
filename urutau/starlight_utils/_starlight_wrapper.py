@@ -648,7 +648,7 @@ class StarlightGeneric(StarlightWrapper):
 
         self._add_card_and_data(card_name="ChiSqrt",
                                 card_comment="ChiSqrt/Nl_eff (see manual)",
-                                data_matrix=self._property_matrix(lambda x: x.fscale_chi2))
+                                data_matrix=self._property_matrix(lambda x: x.chi2_nl_eff_ratio))
 
         self._add_card_and_data(card_name="SNR",
                                 card_comment="SNR on normalization window",
