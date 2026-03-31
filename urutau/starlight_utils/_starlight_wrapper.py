@@ -7,7 +7,6 @@ import itertools as it
 import math
 import os
 import re
-from pathlib import Path
 import subprocess as sp
 import threading as th
 import uuid
@@ -104,7 +103,7 @@ class StarlightWrapper(ABC):
 
         # Set specific cube parameters
         self._filepath = Path(cube_data.filename()) if cube_data.filename() else Path("NONE")
-        self._name_prefix = f"{str(uuid.uuid4()).split('-', maxsplit=1)[0]}_{self._filepath}"
+        self._name_prefix = f"{str(uuid.uuid4()).split('-', maxsplit=1)[0]}_{self._filepath.stem}"
         self._pop_age = pop_age_par
         self._sfr_age = sfr_age_par
         self._fc_par = fc_par
