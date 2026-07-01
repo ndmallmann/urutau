@@ -20,7 +20,8 @@ def quick_resampling_gmos():
     urutau = Urutau(num_threads = 12)
 
     # Spatial resampler — commented out (not needed for this datacube).
-    # Uncomment if spatial binning is required.
+    # Uncomment if spatial binning is required and update "hdu target" in all
+    # downstream modules accordingly (SCI → SCI_BIN, SCI_RSP → SCI_BIN_RSP, etc.).
     #
     # data_spat_resample_cfg = {
     #     "hdu target": "SCI",
