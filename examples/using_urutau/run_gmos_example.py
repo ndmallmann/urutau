@@ -30,18 +30,10 @@ def quick_resampling_gmos():
     # }
     # urutau.add_module(SpatialResampler, data_spat_resample_cfg)
 
-    # Spectral resampler for the data hdu
-    data_spec_resample_cfg = {
-        "hdu target": "SCI",
-        "data type": "flux",
-        "resample size": 1.
-    }
-    urutau.add_module(SpectralResampler, data_spec_resample_cfg)
-
     # Degrade from GMOS (R=2260 at λ=5620 Å) to MILES library resolution (FWHM=2.5 Å)
     # "input ref wave" pins sigma to the value at 5620 Å: sigma = 5620/(2260×2.35482) ≈ 1.06 Å
     data_degrade_cfg = {
-        "hdu target": "SCI_RSP",
+        "hdu target": "SCI",
         "data type": "flux",
         "input type":     "R",    "input value":    2260, "input ref wave": 5620,
         "output type":    "FWHM", "output value":   2.5,  # MILES library FWHM in Angstrom
@@ -61,7 +53,7 @@ def quick_resampling_gmos():
 
     # Signal To Noise mask using mean/std of the flux window (no error HDU needed)
     sn_mask_cfg = {
-        "hdu flux": "SCI_RSP_DEGR",
+        "hdu flux": "SCI_DEGR",
         "sn window": [5650, 5750],
         "thresholds": [1, 5, 10]
     }
@@ -79,7 +71,7 @@ def quick_resampling_gmos():
     starlight_cfg = {
         "starlight path": "./starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
         "default grid file": "./starlight/reference_grid_gmos.in",
-        "hdu flux": "SCI_RSP_DEGR",
+        "hdu flux": "SCI_DEGR",
         "hdu flag": "SN_MASKS_1",
         "population ages": population_ages,
     }
