@@ -17,7 +17,7 @@ from urutau.modules import (
 def quick_resampling_gmos():
     
     # Start urutau with 3 threads
-    urutau = Urutau(num_threads = 12)
+    urutau = Urutau(num_threads = 1)
 
     # Spatial resampler — commented out (not needed for this datacube).
     # Uncomment if spatial binning is required and update "hdu target" in all
@@ -68,12 +68,19 @@ def quick_resampling_gmos():
         "xio": (8E8, 2E9),
         "xo": (2E9, 13E9)
     }
+    # # AGN featureless continuum parameters (see Riffel+09 and Riffel+22) if you whant to add 
+    # fc_par = {
+    #     "FC_50": (0.49, 0.51),
+    # }
+
     starlight_cfg = {
         "starlight path": "./starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
         "default grid file": "./starlight/reference_grid_gmos.in",
+        "number of threads": 12,
         "hdu flux": "SCI_DEGR",
         "hdu flag": "SN_MASKS_1",
         "population ages": population_ages,
+ #       "fc exps": fc_par,
     }
     urutau.add_module(StarlightOnUrutau, starlight_cfg)
 
