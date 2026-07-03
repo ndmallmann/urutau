@@ -324,7 +324,7 @@ class mclass:
 
         self.canvas3.draw()
 
-if __name__ == '__main__':
+def main():
     try:
         megacube = sys.argv[1]
         window = tk.Tk()
@@ -335,6 +335,9 @@ if __name__ == '__main__':
         print("\n\
                   ***********************\n\
                   To run fit_analyser do: \n\
-                  python fit_analyser urutau_output_cube_name.fits \n\
+                  fit_analyser urutau_output_cube_name.fits \n\
                    ***********************\n\
                   ")
+
+if __name__ == '__main__':
+    main()
