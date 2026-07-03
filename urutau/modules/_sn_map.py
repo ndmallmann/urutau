@@ -251,3 +251,47 @@ class SNMaskWithVar(GenericSNMask):
         sn_ratio_map[good_ind] = mean_flux[good_ind] / mean_sqrt_var[good_ind]
 
         return sn_ratio_map
+
+
+class SNMaskMeanStd(GenericSNMask):
+    """
+        Module to generate signal to noise maps based on threshold values. It
+        utilizes the mean and standard deviation of the flux at the
+        normalization window to calculate the signal to noise map, i.e.:
+
+            SNR = mean(flux) / std(flux)
+
+        Default Urutau Parameters:
+            - "hdu flux" = hdu name with flux data (default = "FLUX")
+            - "sn window" = signal to noise window (default = [4000, 6000])
+            - "thresholds" = list of signal to noise thresholds (default = [10])
+            - "redshift" = redshift of the object (default = 0.)
+
+        Resulting Extension Names = "SN_MASKS_X",
+            where X is the threshold value
+
+        Obs:
+            each threshold value generates a different HDU extension.
+
+        Datacubes must contain HDU with EXTNAME = flux_hdu (str or int) and the
+        following header parameters:
+            - "CD3_3" or "CDELT3"  =  DELTA LAMBDA
+            - "CRPIX3" =  ARRAY POSITION OF CENTRAL WAVELENGTH
+            - "CRVAL3" =  CENTRAL WAVELENGTH VALUE
+    """
+
+    name = "SN Mask Mean Std"
+
+    def _sn_map(self, input_hdu: fits.HDUList, left_index: int, right_index: int) -> np.ndarray:
+        flux_data = input_hdu[self["hdu flux"]].data
+
+        flux_at_window = flux_data[left_index:right_index, :, :]
+        mean_at_window = np.nanmean(flux_at_window, axis=0)
+        std_deviation_map = np.nanstd(flux_at_window, axis=0)
+
+        sn_ratio_map = np.zeros_like(mean_at_window)
+        good_ind = std_deviation_map > 0
+        sn_ratio_map[good_ind] = mean_at_window[good_ind] / std_deviation_map[good_ind]
+
+        return sn_ratio_map
+
