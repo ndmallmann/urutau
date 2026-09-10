@@ -28,6 +28,7 @@ class StarlightOnUrutau(AbstractModule):
             - "hdu error" = [Optional] hdu name with error data (default = None)
             - "hdu flag" = [Optional] hdu name with mask data (default = None)
             - "sfr ages" = [Optional] star formation rate age limits (default = {})
+            - "ret mass ages" = [Optional] returned mass age limits (default = {})
             - "fc exps" = [Optional] featureless continuum exponent limits (default = {})
             - "bb temps" = [Optional] black body temperature limits (default = {})
             - "redshift" = [Optional] redshift (for correction) (default = 0.)
@@ -36,7 +37,7 @@ class StarlightOnUrutau(AbstractModule):
             - "keep tmp" = [Optional] keep temp files (True) or not (False) (default = False)
 
         Resulting Extension Names = "BaseAgeMetal", "POPBINS", "PopVecsL",
-            "PopVecsM", "FLXOBS", "FLXSYN", "WEIGHT"
+            "PopVecsM", "PopVecsMini", "FLXOBS", "FLXSYN", "WEIGHT"
 
         Obs:
             population ages is a dictionary containing tuples with min and max
@@ -73,6 +74,7 @@ class StarlightOnUrutau(AbstractModule):
 
         self.default_parameters["population ages"] = {"x": [0, 13E9]}
         self.default_parameters["sfr ages"] = {}
+        self.default_parameters["ret mass ages"] = {}
         self.default_parameters["fc exps"] = {}
         self.default_parameters["bb temps"] = {}
         self.default_parameters["galaxy distance"] = 0.
@@ -110,6 +112,7 @@ class StarlightOnUrutau(AbstractModule):
         sfr_par = self["sfr ages"]
         fc_par = self["fc exps"]
         bb_par = self["bb temps"]
+        ret_mass_par = self["ret mass ages"]
 
         gal_dist = self["galaxy distance"]
         redshift = self["redshift"]
@@ -130,6 +133,7 @@ class StarlightOnUrutau(AbstractModule):
 
         synt_hdus = wrapper.run_starlight(input_hdu, grid, pop_par, sfr_par, fc_par,
                                           bb_par, gal_dist, norm_factor, flux_unit,
-                                          redshift, keep_tmp=self["keep tmp"])
+                                          redshift, ret_mass_age_par=ret_mass_par,
+                                          keep_tmp=self["keep tmp"])
 
         return synt_hdus
