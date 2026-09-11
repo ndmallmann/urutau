@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="urutau",
-    version="1.001",
+    version="1.2",
     packages=find_packages(),
     author="Nicolas Dullius Mallmann & Rogerio Riffel",
     python_requires=">=3.10",
