@@ -164,9 +164,12 @@ def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[Mod
 
         final_configuration = dict()
 
+        print(f"\n----->>> Running {target_container.target}")
+
         if not os.path.exists(target_container.target):
             print(f"TARGET {target_container.target} NOT FOUND!")
             jobs.task_done()
+            continue
 
         with fits.open(target_container.target) as opened_file:
 

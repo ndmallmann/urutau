@@ -90,6 +90,10 @@ class DegradeData(AbstractModule):
         z_size, y_size, x_size = aux_matrix.shape
         degraded_matrix = np.zeros(aux_matrix.shape, dtype=float)
         for i in range(z_size):
+            if conv_sigma[i] <= 0.:
+                degraded_matrix[i, :, :] = aux_matrix[i, :, :]
+                continue
+
             index_cut = (wave >= wave_min[i]) * (wave <= wave_max[i])
             psf = self._get_psf(
                 wave[i], wave[index_cut], conv_sigma[i])
@@ -104,6 +108,8 @@ class DegradeData(AbstractModule):
 
                 degraded_matrix[i, :, :] = np.nansum(
                     conv_map, axis=0) / sum_psf
+            else:
+                degraded_matrix[i, :, :] = aux_matrix[i, :, :]
 
         if "variance" in data_type:
             degraded_matrix = degraded_matrix ** 2.
@@ -116,6 +122,12 @@ class DegradeData(AbstractModule):
         return hdu
 
     def _get_psf(self, x0: float, x: np.ndarray, sigma: float) -> np.ndarray:
+        if sigma <= 0.:
+            psf = np.zeros_like(x, dtype=float)
+            psf[x == x0] = 1.0
+            if np.sum(psf) == 0:
+                psf[np.argmin(np.abs(x - x0))] = 1.0
+            return psf
         exponent = - ((x - x0) ** 2.) / (2 * sigma ** 2.)
         return np.exp(exponent)
 
