@@ -6,6 +6,7 @@ urutau/_urutau.py
 urutau.egg-info/PKG-INFO
 urutau.egg-info/SOURCES.txt
 urutau.egg-info/dependency_links.txt
+urutau.egg-info/entry_points.txt
 urutau.egg-info/requires.txt
 urutau.egg-info/top_level.txt
 urutau/modules/__init__.py
@@ -20,3 +21,5 @@ urutau/starlight_utils/__init__.py
 urutau/starlight_utils/_starlight_grid.py
 urutau/starlight_utils/_starlight_reader.py
 urutau/starlight_utils/_starlight_wrapper.py
+utils/__init__.py
+utils/fit_analyser.py

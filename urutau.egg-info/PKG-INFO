@@ -1,12 +1,8 @@
 Metadata-Version: 2.1
 Name: urutau
 Version: 1.1
-Summary: UNKNOWN
-Home-page: UNKNOWN
-Author: Nicolas Dullius Mallmann
-License: UNKNOWN
-Platform: UNKNOWN
+Author: Nicolas Dullius Mallmann & Rogerio Riffel
 Requires-Python: >=3.10
-
-UNKNOWN
-
+Requires-Dist: astropy
+Requires-Dist: pandas
+Requires-Dist: scipy

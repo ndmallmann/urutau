@@ -1,0 +1,2 @@
+[console_scripts]
+fit_analyser = utils.fit_analyser:main
