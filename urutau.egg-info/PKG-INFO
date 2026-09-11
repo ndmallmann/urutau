@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: urutau
-Version: 1.1
+Version: 1.2
 Author: Nicolas Dullius Mallmann & Rogerio Riffel
 Requires-Python: >=3.10
 Requires-Dist: astropy
