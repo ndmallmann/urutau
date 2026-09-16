@@ -66,7 +66,7 @@ Each module can be configured based on default/general parameters (such as the n
 
 Each target can be loaded with specific parameters that will be automatically fed to each module in the pipeline (such as the redshift).
 
-### Example code
+### 1. Example code
 
 As an example, here's a bit of code that generates data based on a FLUX HDU with resampled X and Y dimension:
 
@@ -95,10 +95,9 @@ This snippet of code uses one single module (SpatialResampler) to resize the spa
 See another example code [here](/examples/using_urutau/using_urutau.py).
 
 
-### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
+### 2. Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
 
-You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py) 
-
+You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py)
 
 ```
     """
@@ -205,12 +204,12 @@ You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirsp
 
 ```
 
-just save this in a script to run it or download it [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
+just save this in a script to run it or download it [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py)
 
 
-### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
+### 3. Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
 
-You can see the script [here](/examples/run_starilght/run_urutau_manga.py) 
+You can see the script [here](/examples/run_starlight/run_urutau_manga.py)
 
 ```
     """
@@ -304,14 +303,17 @@ You can see the script [here](/examples/run_starilght/run_urutau_manga.py)
         quick_manga()
 ```
 
-#### example of the CSV file
+just save this in a script to run it or download it [here](/examples/run_starlight/run_urutau_manga.py)
+
+
+#### 4. Example of the CSV file
 
 ```
     target,redshift,galaxy distance,ebv
     manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
 ```
 
-#### example of the starlight reference grid file 
+#### 5. Example of the starlight reference grid file
 
 ```
     1                                                     [Number of fits to run]
