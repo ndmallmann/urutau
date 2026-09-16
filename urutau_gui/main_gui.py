@@ -16,10 +16,10 @@ import traceback
 from PyQt5.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout,
     QLabel, QPushButton, QScrollArea, QGroupBox, QCheckBox,
-    QSplitter, QProgressBar, QFileDialog, QMessageBox,
+    QSplitter, QProgressBar, QFileDialog, QMessageBox, QSplashScreen,
 )
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont
+from PyQt5.QtGui import QFont, QIcon, QPixmap, QColor
 
 from .constants import STYLESHEET, ACCENT, CARD_BG, MUTED, BORDER_COLOR, SUCCESS_COLOR
 from .custom_widgets import (
@@ -32,6 +32,20 @@ from .urutau_wrapper import (
 )
 from .base_grid_utils import read_base_components, find_agn_bin_conflicts, BaseGridError
 from .script_export import generate_script
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def get_logo_path():
+    """Return the path to the Urutau logo, or None if not found."""
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    for ext in ("jpeg", "jpg", "png"):
+        p = os.path.join(pkg_dir, "assets", f"logo.{ext}")
+        if os.path.isfile(p):
+            return p
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -159,6 +173,16 @@ class MainWindow(QMainWindow):
         sub.setWordWrap(True)
         layout.addWidget(title)
         layout.addWidget(sub)
+
+        logo_path = get_logo_path()
+        if logo_path:
+            pix = QPixmap(logo_path)
+            if not pix.isNull():
+                logo_label = QLabel()
+                logo_label.setPixmap(pix.scaledToWidth(190, Qt.SmoothTransformation))
+                logo_label.setAlignment(Qt.AlignCenter)
+                logo_label.setStyleSheet("background: transparent; border: none; margin-bottom: 12px;")
+                layout.addWidget(logo_label)
 
         self.nav_buttons = []
         sections = [
@@ -1170,7 +1194,27 @@ def main():
     font = QFont("Inter", 10)
     app.setFont(font)
 
+    logo_path = get_logo_path()
+    if logo_path:
+        app.setWindowIcon(QIcon(logo_path))
+
+    splash = None
+    if logo_path:
+        pix = QPixmap(logo_path)
+        if not pix.isNull():
+            splash_pix = pix.scaledToWidth(480, Qt.SmoothTransformation)
+            splash = QSplashScreen(splash_pix, Qt.WindowStaysOnTopHint)
+            splash.showMessage(
+                "  Urutau — Initializing…",
+                Qt.AlignBottom | Qt.AlignLeft,
+                QColor("#FFFFFF"),
+            )
+            splash.show()
+            app.processEvents()
+
     window = MainWindow()
+    if splash:
+        splash.finish(window)
     window.show()
     sys.exit(app.exec_())
 
