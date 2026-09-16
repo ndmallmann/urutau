@@ -21,5 +21,13 @@ urutau/starlight_utils/__init__.py
 urutau/starlight_utils/_starlight_grid.py
 urutau/starlight_utils/_starlight_reader.py
 urutau/starlight_utils/_starlight_wrapper.py
+urutau_gui/__init__.py
+urutau_gui/__main__.py
+urutau_gui/base_grid_utils.py
+urutau_gui/constants.py
+urutau_gui/custom_widgets.py
+urutau_gui/main_gui.py
+urutau_gui/script_export.py
+urutau_gui/urutau_wrapper.py
 utils/__init__.py
 utils/fit_analyser.py
