@@ -1,4 +1,4 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: urutau
 Version: 1.2
 Author: Nicolas Dullius Mallmann & Rogerio Riffel
@@ -6,3 +6,9 @@ Requires-Python: >=3.10
 Requires-Dist: astropy
 Requires-Dist: pandas
 Requires-Dist: scipy
+Provides-Extra: gui
+Requires-Dist: PyQt5; extra == "gui"
+Dynamic: author
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
