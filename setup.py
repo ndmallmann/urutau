@@ -17,6 +17,7 @@ setup(
     entry_points={
         "console_scripts": [
             "fit_analyser=utils.fit_analyser:main",
+            "urutau-gui=urutau_gui.main_gui:main",
         ],
     },
 )
