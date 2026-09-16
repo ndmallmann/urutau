@@ -8,6 +8,10 @@ setup(
     name="urutau",
     version="1.2",
     packages=find_packages(),
+    package_data={
+        "urutau_gui": ["assets/*"],
+    },
+    include_package_data=True,
     author="Nicolas Dullius Mallmann & Rogerio Riffel",
     python_requires=">=3.10",
     install_requires=["astropy", "pandas", "scipy"],
