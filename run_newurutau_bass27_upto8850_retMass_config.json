@@ -1,0 +1,112 @@
+{
+  "num_threads": 1,
+  "input": {
+    "data_hdu": "DATA",
+    "stat_hdu": "STAT",
+    "stat_type": "variance"
+  },
+  "spatial": {
+    "enabled": false,
+    "size": 4
+  },
+  "resolution": {
+    "enabled": true,
+    "input_type": "R",
+    "input_value": 3027,
+    "input_ref_wave": null,
+    "output_type": "FWHM",
+    "output_value": 2.51,
+    "output_ref_wave": null
+  },
+  "spectral_bin": {
+    "enabled": true,
+    "size": 1.0
+  },
+  "dereddening": {
+    "enabled": true,
+    "law": "CCM",
+    "ebv": 0.0,
+    "rv": 3.1
+  },
+  "sn_mask": {
+    "enabled": true,
+    "method": "Variance",
+    "window": [5650.0, 5750.0],
+    "thresholds": [10, 20],
+    "redshift": 0.0
+  },
+  "starlight": {
+    "enabled": true,
+    "path": "/disk3/BASS_CUBES/starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
+    "grid_file": "/disk3/BASS_CUBES/starlight/reference_grid_muse_newMiles.in",
+    "num_threads": 52,
+    "flag_threshold": 10,
+    "galaxy_distance": 0.0,
+    "redshift": 0.0,
+    "normalization_factor": 1.0,
+    "flux_unit": "",
+    "keep_tmp": false,
+    "mask_file": "",
+    "timeout_mode": "none",
+    "timeout_minutes": null,
+    "timeout_window": 15,
+    "timeout_multiplier": 2.0,
+    "population_ages": {
+      "xyy": [100, 10100000.0],
+      "xyo": [10100000.0, 56300000.0],
+      "xiy": [56300000.0, 502000000.0],
+      "xy": [100, 56300000.0],
+      "xii": [502000000.0, 795000000.0],
+      "xio": [795000000.0, 2010000000.0],
+      "xi": [56300000.0, 2010000000.0],
+      "xo": [2010000000.0, 13000000000.0]
+    },
+    "sfr_ages": {},
+    "ret_mass_ages": {
+      "inter": [10.0, 2000000000.0]
+    },
+    "fc_exps": {
+      "FC_50": [0.49, 0.51]
+    },
+    "bb_temps": {}
+  },
+  "targets": {
+    "dir": "/disk3/BASS_CUBES/muse_cubes/",
+    "csv": "/disk3/BASS_CUBES/muse_cubes/targets_OP_BASS_27_lais.csv",
+    "columns": ["target", "redshift", "galaxy distance", "ebv"],
+    "rows": [
+      ["NGC424.fits", "0.01088493", "51.0", "0.0156"],
+      ["IC1657.fits", "0.01168781", "48.3", "0.0269"],
+      ["NGC454E.fits", "0.01219622", "52.7", "0.023"],
+      ["NGC678.fits", "0.00948535", "34.5", "0.0861"],
+      ["NGC788.fits", "0.01365372", "59.1", "0.027"],
+      ["NGC835.fits", "0.0133448", "57.7", "0.0255"],
+      ["NGC1068.fits", "0.00348372", "14.4", "0.0333"],
+      ["NGC1194.fits", "0.0135689", "58.7", "0.0765"],
+      ["NGC2110.fits", "0.00749958", "34.3", "0.373"],
+      ["NGC2992.fits", "0.00767495", "38.0", "0.0603"],
+      ["NGC3081.fits", "0.00807122", "32.5", "0.0552"],
+      ["NGC3393.fits", "0.01294208", "56.0", "0.0753"],
+      ["NGC4388.fits", "0.00834408", "18.1", "0.0332"],
+      ["NGC4941.fits", "0.00388097", "20.4", "0.0362"],
+      ["NGC4945.fits", "0.00225919", "3.5", "0.1765"],
+      ["CenA.fits", "0.00187695", "3.7", "0.1149"],
+      ["ESO21-4.fits", "0.00963222", "41.6", "0.2108"],
+      ["ESO383-18.fits", "0.01287161", "55.7", "0.0591"],
+      ["circinus.fits", "0.00149475", "4.2", "1.4861"],
+      ["NGC5643.fits", "0.00404157", "12.7", "0.1686"],
+      ["NGC5728.fits", "0.01032112", "37.5", "0.1019"],
+      ["IC5063.fits", "0.01126748", "45.9", "0.0616"],
+      ["NGC7172.fits", "0.00851075", "33.9", "0.0266"],
+      ["NGC7479.fits", "0.00710453", "36.8", "0.1125"],
+      ["NGC7582.fits", "0.00524908", "22.5", "0.014"],
+      ["NGC833.fits", "0.013548", "58.6", "0.0255"]
+    ]
+  },
+  "output": {
+    "save_path_root": "/disk3/BASS_CUBES/run_urutau_Aug_26_up8850_ntel_new_retmass/",
+    "save_config": true,
+    "debug": true,
+    "overwrite": true
+  }
+}

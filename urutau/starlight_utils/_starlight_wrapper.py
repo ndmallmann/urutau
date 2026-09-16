@@ -9,6 +9,7 @@ import os
 import re
 import subprocess as sp
 import threading as th
+import time
 import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Callable
@@ -46,6 +47,18 @@ class StarlightWrapper(ABC):
         self._norm_factor = 1.
         self._flux_unit = ""
 
+        # Per-process timeout (see _call_starlight): "none" never kills a
+        # process, "fixed" kills any process past timeout_minutes, "adaptive"
+        # recomputes the limit from the rolling average of the last
+        # timeout_window completed (non-killed) process durations, times
+        # timeout_multiplier; timeout_minutes is then only used as a
+        # fallback while fewer than timeout_window samples are available.
+        self._timeout_mode = "none"
+        self._timeout_minutes = None
+        self._timeout_window = 15
+        self._timeout_multiplier = 2.0
+        self._timed_out_grids = list()
+
     @abstractmethod
     def _extract_cube(self, cube_data: fits.HDUList, out_dir: str) -> np.ndarray:
         """
@@ -78,7 +91,7 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
@@ -96,11 +109,38 @@ class StarlightWrapper(ABC):
                 - ret_mass_age_par =  dictionary with returned mass age ranges, ex: {"name_ret": [age_ini_exclusive, age_fin_inclusive]}
                 - keep_tmp         =  True/False to keep temporary files
                                       generated
+                - timeout_mode     =  "none" (default, never kills a spaxel's
+                                      process), "fixed" (kills any process
+                                      running longer than timeout_minutes) or
+                                      "adaptive" (kills a process running
+                                      longer than timeout_multiplier times the
+                                      rolling average of the last
+                                      timeout_window completed process
+                                      durations for this cube; timeout_minutes
+                                      is used as a fallback limit while fewer
+                                      than timeout_window samples exist)
+                - timeout_minutes  =  fixed timeout (minutes), or the
+                                      adaptive warm-up fallback; None/0 means
+                                      no limit while in that state
+                - timeout_window   =  number of recent per-spaxel durations to
+                                      average over in "adaptive" mode
+                - timeout_multiplier = multiplier applied to that rolling
+                                      average in "adaptive" mode
+
+            A killed spaxel is left without a STARLIGHT output file, so it is
+            picked up by the existing failed-spaxel handling (get_parameters()
+            marks it invalid_file=True) exactly like any other STARLIGHT
+            failure — no separate error path needed.
 
             Return HDUList with created HDUs
         """
 
         self._clear_tmp_data()
+
+        self._timeout_mode = timeout_mode or "none"
+        self._timeout_minutes = timeout_minutes
+        self._timeout_window = max(1, int(timeout_window or 15))
+        self._timeout_multiplier = float(timeout_multiplier or 2.0)
 
         # Set specific cube parameters
         self._filepath = Path(cube_data.filename()) if cube_data.filename() else Path("NONE")
@@ -176,13 +216,49 @@ class StarlightWrapper(ABC):
 
     def _call_starlight(self, full_grids_list: list[str]) -> None:
 
+        # Shared across all worker threads: durations of processes that ran
+        # to completion (killed ones are excluded, since their elapsed time
+        # is just the timeout itself, not a real measurement), and the
+        # timeout state is recomputed from these before every spawn.
+        durations_lock = th.Lock()
+        durations: list[float] = list()
+        self._timed_out_grids = list()
+
+        fallback_seconds = (self._timeout_minutes * 60.) if self._timeout_minutes else None
+
+        def _current_timeout() -> float | None:
+            if self._timeout_mode == "fixed":
+                return fallback_seconds
+            if self._timeout_mode == "adaptive":
+                with durations_lock:
+                    recent = durations[-self._timeout_window:]
+                    have_enough = len(durations) >= self._timeout_window
+                if have_enough:
+                    return (sum(recent) / len(recent)) * self._timeout_multiplier
+                return fallback_seconds
+            return None
+
         def _starlight_thread(grid_list: list[str], exec_name: str, exec_dir: str) -> None:
             for grid in grid_list:
+                timeout = _current_timeout()
+                start_time = time.monotonic()
+
                 with open(grid, "rb") as grid_handler:
                     arguments = (exec_name,)
                     prog = sp.Popen(args=arguments, stdin=grid_handler,
                                     stdout=sp.DEVNULL, cwd=exec_dir)
-                    prog.wait()
+                    try:
+                        prog.wait(timeout=timeout)
+                    except sp.TimeoutExpired:
+                        prog.kill()
+                        prog.wait()
+                        with durations_lock:
+                            self._timed_out_grids.append(grid)
+                        print(f"[STARLIGHT] Killed process past {timeout:.0f}s timeout: {grid}")
+                        continue
+
+                with durations_lock:
+                    durations.append(time.monotonic() - start_time)
 
         workers: list[th.Thread] = list()
 
@@ -194,6 +270,12 @@ class StarlightWrapper(ABC):
 
         for worker in workers:
             worker.join()
+
+        if self._timed_out_grids:
+            print(
+                f"[STARLIGHT] {len(self._timed_out_grids)} spaxel(s) timed out and were "
+                "killed; they are recorded as failed spaxels in the output."
+            )
 
 
     def _delete_tmp_files(self) -> None:
