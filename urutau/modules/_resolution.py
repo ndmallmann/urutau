@@ -90,6 +90,10 @@ class DegradeData(AbstractModule):
         z_size, y_size, x_size = aux_matrix.shape
         degraded_matrix = np.zeros(aux_matrix.shape, dtype=float)
         for i in range(z_size):
+            if conv_sigma[i] <= 0.:
+                degraded_matrix[i, :, :] = aux_matrix[i, :, :]
+                continue
+
             index_cut = (wave >= wave_min[i]) * (wave <= wave_max[i])
             psf = self._get_psf(
                 wave[i], wave[index_cut], conv_sigma[i])
@@ -104,6 +108,8 @@ class DegradeData(AbstractModule):
 
                 degraded_matrix[i, :, :] = np.nansum(
                     conv_map, axis=0) / sum_psf
+            else:
+                degraded_matrix[i, :, :] = aux_matrix[i, :, :]
 
         if "variance" in data_type:
             degraded_matrix = degraded_matrix ** 2.
@@ -116,8 +122,29 @@ class DegradeData(AbstractModule):
         return hdu
 
     def _get_psf(self, x0: float, x: np.ndarray, sigma: float) -> np.ndarray:
+        if sigma <= 0.:
+            psf = np.zeros_like(x, dtype=float)
+            psf[x == x0] = 1.0
+            if np.sum(psf) == 0:
+                psf[np.argmin(np.abs(x - x0))] = 1.0
+            return psf
         exponent = - ((x - x0) ** 2.) / (2 * sigma ** 2.)
         return np.exp(exponent)
+
+    def _wave_array(self, flux_header: fits.Header) -> np.ndarray:
+        z_size = flux_header["NAXIS3"]
+
+        delta_name = "CDELT3" if "CDELT3" in flux_header else "CD3_3"
+
+        dt_wave = flux_header[delta_name]
+        c_wave_position = flux_header["CRPIX3"] - 1
+        c_wave_value = flux_header["CRVAL3"]
+
+        ini_wave = c_wave_value - c_wave_position * dt_wave
+
+        wave_array = ini_wave + np.array([x*dt_wave for x in range(0, z_size)])
+
+        return wave_array
 
 
 class DegradeDataFlex(DegradeData):
@@ -232,19 +259,3 @@ class DegradeDataFlex(DegradeData):
         diff_sigma = sigma_out ** 2. - sigma_in ** 2.
         diff_sigma[diff_sigma < 0] = 0.
         return np.sqrt(diff_sigma)
-
-
-    def _wave_array(self, flux_header: fits.Header) -> np.ndarray:
-        z_size = flux_header["NAXIS3"]
-
-        delta_name = "CDELT3" if "CDELT3" in flux_header else "CD3_3"
-
-        dt_wave = flux_header[delta_name]
-        c_wave_position = flux_header["CRPIX3"] - 1
-        c_wave_value = flux_header["CRVAL3"]
-
-        ini_wave = c_wave_value - c_wave_position * dt_wave
-
-        wave_array = ini_wave + np.array([x*dt_wave for x in range(0, z_size)])
-
-        return wave_array

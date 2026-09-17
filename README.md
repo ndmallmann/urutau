@@ -41,6 +41,22 @@ source activate urutau
 pip install urutau@git+https://github.com/ndmallmann/urutau.git
 ```
 
+### Installing the graphical interface (optional)
+
+Urutau also ships with an optional desktop GUI (see [Graphical Interface](#graphical-interface) below) so you can configure and run a pipeline without writing a script. It depends on PyQt5, which is kept as an optional extra so people who only need the library aren't forced to install a desktop toolkit:
+
+```
+pip install "urutau[gui]@git+https://github.com/ndmallmann/urutau.git"
+```
+
+or, from a local clone:
+
+```
+pip install ".[gui]"
+```
+
+This adds a `urutau-gui` command to your terminal.
+
 
 
 ## How does it Work?
@@ -53,7 +69,7 @@ Each module can be configured based on default/general parameters (such as the n
 
 Each target can be loaded with specific parameters that will be automatically fed to each module in the pipeline (such as the redshift).
 
-### Example code
+### 1. Example code
 
 As an example, here's a bit of code that generates data based on a FLUX HDU with resampled X and Y dimension:
 
@@ -82,10 +98,9 @@ This snippet of code uses one single module (SpatialResampler) to resize the spa
 See another example code [here](/examples/using_urutau/using_urutau.py).
 
 
-### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
+### 2. Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on NIRSPEC/JWST cubes
 
-You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py) 
-
+You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py)
 
 ```
     """
@@ -192,12 +207,12 @@ You can see the script [here](/examples/run_starlight/run_urutau_starlight_nirsp
 
 ```
 
-just save this in a script to run it or download it [here](/examples/run_starilght/run_urutau_starlight_nirspec_jwst.py) 
+just save this in a script to run it or download it [here](/examples/run_starlight/run_urutau_starlight_nirspec_jwst.py)
 
 
-### Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
+### 3. Simple example to run URUTAU with Starlight (http://www.starlight.ufsc.br/) on MaNGA cubes
 
-You can see the script [here](/examples/run_starilght/run_urutau_manga.py) 
+You can see the script [here](/examples/run_starlight/run_urutau_manga.py)
 
 ```
     """
@@ -291,14 +306,17 @@ You can see the script [here](/examples/run_starilght/run_urutau_manga.py)
         quick_manga()
 ```
 
-#### example of the CSV file
+just save this in a script to run it or download it [here](/examples/run_starlight/run_urutau_manga.py)
+
+
+#### 4. Example of the CSV file
 
 ```
     target,redshift,galaxy distance,ebv
     manga-CUBE-LINCUBE.fits,0.00145,4.21,1.288
 ```
 
-#### example of the starlight reference grid file 
+#### 5. Example of the starlight reference grid file
 
 ```
     1                                                     [Number of fits to run]
@@ -319,6 +337,30 @@ You can see the script [here](/examples/run_starilght/run_urutau_manga.py)
     mock.spec   StCv04.C11.config   BaseM23UN130SY   Masks.EmLines.SDSS.gm   CCM   0.0   150.0   mock_out.spec
 
 ```
+
+### A few newer additions to StarlightOnUrutau and execute()
+
+A couple of small but handy parameters were added since the examples above were written:
+
+- `StarlightOnUrutau` accepts an optional `"mask file"` parameter that overrides the mask taken from the reference grid file. Like any other parameter, it can be set per-target through the targets CSV (e.g. a `mask file` column), so different galaxies can use different emission-line masks without needing separate grid files for each of them.
+- `StarlightOnUrutau` also accepts `"timeout mode"` ("none", "fixed" or "adaptive"), `"timeout minutes"`, `"timeout window"` and `"timeout multiplier"`, which let you automatically kill a spaxel's STARLIGHT process if it takes too long to converge — either after a fixed number of minutes, or after a multiple of the average time taken by the last few spaxels that finished normally. A killed spaxel is simply recorded as a failed spaxel, same as any other STARLIGHT failure.
+- `Urutau.execute()` accepts `overwrite` (default `True`, matching the previous behavior). Setting it to `False` makes Urutau skip a target entirely — none of its modules are run — if its output file already exists in the save path, which is convenient when resuming a large batch that was interrupted partway through.
+
+## Graphical Interface
+
+If you'd rather not write a script by hand, Urutau also ships with a graphical interface (a PyQt5 desktop app) that lets you configure and run a full pipeline — resolution degradation, spatial/spectral resampling, dereddening, signal-to-noise masking and STARLIGHT fitting — just by filling in forms, then hit "Run Urutau".
+
+See [Installing the graphical interface](#installing-the-graphical-interface-optional) above for how to get it; once installed, just run `urutau-gui` from your terminal.
+
+Everything you can do in the GUI maps directly onto the script API described above — it's the same `Urutau` object, the same modules, and the same parameters, just filled in through forms instead of Python code. On top of that, it also gives you:
+
+- **An editable targets table** instead of hand-writing the CSV: add or remove galaxies and columns directly in the app, or load/save an existing CSV file. Any extra column (redshift, E(B-V), galaxy distance, a custom STARLIGHT mask file, ...) becomes a per-target override, exactly like `Urutau.read_csv()` already supports.
+- **Per-target custom masks**, using the `"mask file"` addition described above: add a `mask file` column to the targets table (or set a single override for every target) to give individual galaxies their own emission-line mask.
+- **A base/population sanity check**: a button cross-checks your STARLIGHT population-age bins against the actual stellar base file referenced by the grid, and warns you if an AGN component (featureless continuum, hot dust, ...) ended up inside a stellar age bin by mistake — those belong in their own dedicated fields instead.
+- **A per-spaxel process timeout** (fixed or adaptive, see above), configurable right from the Starlight panel.
+- **Skip vs. overwrite**, so you can safely resume an interrupted batch without recomputing galaxies you already have.
+- **Save and load a full configuration** as a JSON file, so a pipeline you set up once can be reopened, tweaked and rerun later.
+- **Export a standalone script**: turn your current configuration into a plain `.py` file that reproduces the exact same pipeline without needing the GUI at all — handy for running it on a cluster or any headless machine.
 
 ## Creating Modules
 

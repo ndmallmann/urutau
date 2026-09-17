@@ -9,6 +9,7 @@ import os
 import re
 import subprocess as sp
 import threading as th
+import time
 import uuid
 from abc import ABC, abstractmethod
 from typing import Any, Callable
@@ -46,6 +47,18 @@ class StarlightWrapper(ABC):
         self._norm_factor = 1.
         self._flux_unit = ""
 
+        # Per-process timeout (see _call_starlight): "none" never kills a
+        # process, "fixed" kills any process past timeout_minutes, "adaptive"
+        # recomputes the limit from the rolling average of the last
+        # timeout_window completed (non-killed) process durations, times
+        # timeout_multiplier; timeout_minutes is then only used as a
+        # fallback while fewer than timeout_window samples are available.
+        self._timeout_mode = "none"
+        self._timeout_minutes = None
+        self._timeout_window = 15
+        self._timeout_multiplier = 2.0
+        self._timed_out_grids = list()
+
     @abstractmethod
     def _extract_cube(self, cube_data: fits.HDUList, out_dir: str) -> np.ndarray:
         """
@@ -78,7 +91,7 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, keep_tmp: bool = False) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
@@ -93,13 +106,41 @@ class StarlightWrapper(ABC):
                 - norm_factor      =  flux normalization factor (to be multiplyed by the spectrum if it was already normalized)
                 - flux_unit        =  flux unit name
                 - redshift         =  galaxy redshift
+                - ret_mass_age_par =  dictionary with returned mass age ranges, ex: {"name_ret": [age_ini_exclusive, age_fin_inclusive]}
                 - keep_tmp         =  True/False to keep temporary files
                                       generated
+                - timeout_mode     =  "none" (default, never kills a spaxel's
+                                      process), "fixed" (kills any process
+                                      running longer than timeout_minutes) or
+                                      "adaptive" (kills a process running
+                                      longer than timeout_multiplier times the
+                                      rolling average of the last
+                                      timeout_window completed process
+                                      durations for this cube; timeout_minutes
+                                      is used as a fallback limit while fewer
+                                      than timeout_window samples exist)
+                - timeout_minutes  =  fixed timeout (minutes), or the
+                                      adaptive warm-up fallback; None/0 means
+                                      no limit while in that state
+                - timeout_window   =  number of recent per-spaxel durations to
+                                      average over in "adaptive" mode
+                - timeout_multiplier = multiplier applied to that rolling
+                                      average in "adaptive" mode
+
+            A killed spaxel is left without a STARLIGHT output file, so it is
+            picked up by the existing failed-spaxel handling (get_parameters()
+            marks it invalid_file=True) exactly like any other STARLIGHT
+            failure — no separate error path needed.
 
             Return HDUList with created HDUs
         """
 
         self._clear_tmp_data()
+
+        self._timeout_mode = timeout_mode or "none"
+        self._timeout_minutes = timeout_minutes
+        self._timeout_window = max(1, int(timeout_window or 15))
+        self._timeout_multiplier = float(timeout_multiplier or 2.0)
 
         # Set specific cube parameters
         self._filepath = Path(cube_data.filename()) if cube_data.filename() else Path("NONE")
@@ -112,6 +153,7 @@ class StarlightWrapper(ABC):
         self._galaxy_distance = galaxy_distance
         self._norm_factor = norm_factor
         self._flux_unit = flux_unit
+        self._ret_mass_age = ret_mass_age_par if ret_mass_age_par is not None else {}
 
         # Create extraction and output dirs
         obs_dir = grid_parameters.obs_dir
@@ -174,13 +216,49 @@ class StarlightWrapper(ABC):
 
     def _call_starlight(self, full_grids_list: list[str]) -> None:
 
+        # Shared across all worker threads: durations of processes that ran
+        # to completion (killed ones are excluded, since their elapsed time
+        # is just the timeout itself, not a real measurement), and the
+        # timeout state is recomputed from these before every spawn.
+        durations_lock = th.Lock()
+        durations: list[float] = list()
+        self._timed_out_grids = list()
+
+        fallback_seconds = (self._timeout_minutes * 60.) if self._timeout_minutes else None
+
+        def _current_timeout() -> float | None:
+            if self._timeout_mode == "fixed":
+                return fallback_seconds
+            if self._timeout_mode == "adaptive":
+                with durations_lock:
+                    recent = durations[-self._timeout_window:]
+                    have_enough = len(durations) >= self._timeout_window
+                if have_enough:
+                    return (sum(recent) / len(recent)) * self._timeout_multiplier
+                return fallback_seconds
+            return None
+
         def _starlight_thread(grid_list: list[str], exec_name: str, exec_dir: str) -> None:
             for grid in grid_list:
+                timeout = _current_timeout()
+                start_time = time.monotonic()
+
                 with open(grid, "rb") as grid_handler:
                     arguments = (exec_name,)
                     prog = sp.Popen(args=arguments, stdin=grid_handler,
                                     stdout=sp.DEVNULL, cwd=exec_dir)
-                    prog.wait()
+                    try:
+                        prog.wait(timeout=timeout)
+                    except sp.TimeoutExpired:
+                        prog.kill()
+                        prog.wait()
+                        with durations_lock:
+                            self._timed_out_grids.append(grid)
+                        print(f"[STARLIGHT] Killed process past {timeout:.0f}s timeout: {grid}")
+                        continue
+
+                with durations_lock:
+                    durations.append(time.monotonic() - start_time)
 
         workers: list[th.Thread] = list()
 
@@ -192,6 +270,12 @@ class StarlightWrapper(ABC):
 
         for worker in workers:
             worker.join()
+
+        if self._timed_out_grids:
+            print(
+                f"[STARLIGHT] {len(self._timed_out_grids)} spaxel(s) timed out and were "
+                "killed; they are recorded as failed spaxels in the output."
+            )
 
 
     def _delete_tmp_files(self) -> None:
@@ -421,6 +505,7 @@ class StarlightGeneric(StarlightWrapper):
         self._add_popbins_hdu()
         self._add_popvecs_light_hdu()
         self._add_popvecs_mass_hdu()
+        self._add_popvecs_mass_ini_hdu()
         self._add_obs_flux_hdu()
         self._add_syn_flux_hdu()
         self._add_weight_hdu()
@@ -467,6 +552,8 @@ class StarlightGeneric(StarlightWrapper):
 
         self._add_population_data_to_popbins_hdu()
         self._add_star_formation_rate_data_to_popbins_hdu()
+        if self._galaxy_distance > 0.:
+            self._add_returned_mass_data_to_popbins_hdu()
         self._add_other_data_to_popbins_hdu()
 
         name = "PopBins"
@@ -481,9 +568,16 @@ class StarlightGeneric(StarlightWrapper):
 
     def _add_popvecs_mass_hdu(self) -> None:
         name = "PopVecsM"
-        summary = "Population Vectors Not Binned in Mass Fractions"
+        summary = "Population Vectors Not Binned in Mass Fractions (Mcor_j(%))"
         hdu_data = self._array_matrix(lambda x: x.m_cor_j)
         self._add_hdu(name, summary, list(), hdu_data)
+
+    def _add_popvecs_mass_ini_hdu(self) -> None:
+        name = "PopVecsMini"
+        summary = "Population Vectors Not Binned in Initial Mass Fractions (Mini_j(%))"
+        hdu_data = self._array_matrix(lambda x: x.m_ini_j)
+        self._add_hdu(name, summary, list(), hdu_data)
+
 
     def _add_obs_flux_hdu(self) -> None:
         name = "FLXOBS"
@@ -793,8 +887,8 @@ class StarlightGeneric(StarlightWrapper):
     def _pop_by_light(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
 
-        exclude_bb = np.array([not j.lower().startswith("agn_bb_") for j in sl_out.component_j])
-        exclude_fc = np.array([not j.lower().startswith("agn_fc_") for j in sl_out.component_j])
+        exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
+        exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
 
         total_x_j = np.sum(sl_out.x_j)
         if total_x_j <= 0.:
@@ -806,8 +900,8 @@ class StarlightGeneric(StarlightWrapper):
     def _pop_by_mass(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
         
-        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
-        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
+        exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
+        exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
         
         total_m_j = np.sum(sl_out.m_cor_j)
         if total_m_j <= 0.:
@@ -819,8 +913,8 @@ class StarlightGeneric(StarlightWrapper):
     def _sfr_at_age(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
         m_cor_t = self._m_cor_t(sl_out)
 
-        exclude_bb = np.array([not j.lower().startswith("agn_bb") for j in sl_out.component_j])
-        exclude_fc = np.array([not j.lower().startswith("agn_fc") for j in sl_out.component_j])
+        exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
+        exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
 
         age_range = age_max - age_min
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
@@ -829,6 +923,45 @@ class StarlightGeneric(StarlightWrapper):
         sfr_value = np.sum(sl_out.m_ini_j[age_index * exclude_bb * exclude_fc]) * m_total_factor
 
         return sfr_value
+
+    def _ret_mass_at_age(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
+        gd_factor = self._gd_factor()
+
+        exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
+        exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
+
+        age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
+        mask = age_index * exclude_bb * exclude_fc
+
+        m_ini_sum = np.sum(sl_out.m_ini_j[mask]) / 100.0
+        m_cor_sum = np.sum(sl_out.m_cor_j[mask]) / 100.0
+
+        m_ini_total = m_ini_sum * self._norm_factor * sl_out.m_ini_tot * gd_factor
+        m_cor_total = m_cor_sum * self._norm_factor * sl_out.m_cor_tot * gd_factor
+
+        return m_ini_total - m_cor_total
+
+    def _ret_mass_total(self, sl_out: StarlightOutput) -> float:
+        return self._ret_mass_at_age(sl_out, 0., np.inf)
+
+    def _add_returned_mass_data_to_popbins_hdu(self) -> None:
+        # Total returned mass (all ages)
+        self._add_card_and_data(
+            card_name="Mret",
+            card_comment="Total returned mass (Msun)",
+            data_matrix=self._property_matrix(self._ret_mass_total)
+        )
+        # Returned mass per age bin (if configured)
+        for name, age in self._ret_mass_age.items():
+            card_n = f"Mret_{name}"
+            card_comment = f"Returned mass for ages between {age[0]:.1E} and {age[1]:.1E} years (Msun)"
+            self._add_card_and_data(
+                card_name=card_n,
+                card_comment=card_comment,
+                data_matrix=self._property_matrix(
+                    lambda x, a0=age[0], a1=age[1]: self._ret_mass_at_age(x, a0, a1)
+                )
+            )
 
     def _wavelength_info_cards(self):
         init_wave = self._grid_generator.parameters.olsyn_ini

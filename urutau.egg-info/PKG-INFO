@@ -1,12 +1,14 @@
-Metadata-Version: 2.1
+Metadata-Version: 2.4
 Name: urutau
-Version: 1.1
-Summary: UNKNOWN
-Home-page: UNKNOWN
-Author: Nicolas Dullius Mallmann
-License: UNKNOWN
-Platform: UNKNOWN
+Version: 1.2
+Author: Nicolas Dullius Mallmann & Rogerio Riffel
 Requires-Python: >=3.10
-
-UNKNOWN
-
+Requires-Dist: astropy
+Requires-Dist: pandas
+Requires-Dist: scipy
+Provides-Extra: gui
+Requires-Dist: PyQt5; extra == "gui"
+Dynamic: author
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python

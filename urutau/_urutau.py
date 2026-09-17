@@ -83,11 +83,18 @@ class Urutau:
             target_cfg = {prop: row[prop] for prop in properties}
             self.add_target(target_path, target_cfg)
 
-    def execute(self, save_path_root: str = "./", save_config: bool = True, debug: bool = False) -> None:
+    def execute(self, save_path_root: str = "./", save_config: bool = True, debug: bool = False, overwrite: bool = True) -> None:
         """
             Execute all modules from the list (in sequential order).
 
             Saves the final result on save_path.
+
+            overwrite: when False, a target whose output file (see
+            _final_save_path) already exists is skipped entirely — none of
+            its modules are run, so no time is wasted (re-)computing an
+            existing megacube. When True (default, matches the previous
+            behavior), every target is (re-)processed and its output
+            overwritten unconditionally.
         """
 
         self._save_path_root = save_path_root
@@ -98,8 +105,8 @@ class Urutau:
         self._executing = True
 
         jobs = self._create_jobs_list()
-        
-        for worker in self._create_workers(jobs, save_config, debug):
+
+        for worker in self._create_workers(jobs, save_config, debug, overwrite):
             worker.start()
 
         jobs.join()
@@ -107,12 +114,12 @@ class Urutau:
         self._target_containers.clear()
         self._executing = False
 
-    def _create_workers(self, jobs: queue.Queue[TargetContainer], save_config: bool, debug: bool) -> list[th.Thread]:
+    def _create_workers(self, jobs: queue.Queue[TargetContainer], save_config: bool, debug: bool, overwrite: bool) -> list[th.Thread]:
         workers: list[th.Thread] = list()
 
         for _ in range(self._num_threads):
             worker_args = (jobs, self._module_containers.copy(),
-                           self._save_path_root, save_config, debug)
+                           self._save_path_root, save_config, debug, overwrite)
             worker = th.Thread(target=_worker_task, args=worker_args)
             workers.append(worker)
 
@@ -153,7 +160,7 @@ class Urutau:
             print(f"Invalid directory path '{self._save_path_root}'!")
 
 
-def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[ModuleContainer], path_root: str, save_config: bool, debug: bool) -> None:
+def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[ModuleContainer], path_root: str, save_config: bool, debug: bool, overwrite: bool = True) -> None:
 
     while True:
         # Verify if the jobs queue is not empty
@@ -164,9 +171,19 @@ def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[Mod
 
         final_configuration = dict()
 
+        print(f"\n----->>> Running {target_container.target}")
+
         if not os.path.exists(target_container.target):
             print(f"TARGET {target_container.target} NOT FOUND!")
             jobs.task_done()
+            continue
+
+        final_target_name = _final_save_path(path_root, target_container.target)
+
+        if not overwrite and os.path.exists(final_target_name):
+            print(f"SKIPPING {target_container.target} (output already exists: {final_target_name})")
+            jobs.task_done()
+            continue
 
         with fits.open(target_container.target) as opened_file:
 
@@ -191,8 +208,6 @@ def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[Mod
                 cfg_hdus = _generate_config_hdu(final_configuration)
                 _concatenate_hdus(opened_file, cfg_hdus)
 
-            final_target_name = _final_save_path(
-                path_root, target_container.target)
             opened_file.writeto(final_target_name, overwrite=True)
 
         jobs.task_done()
