@@ -193,7 +193,7 @@ def _worker_task(jobs: queue.Queue[TargetContainer], module_containers: list[Mod
                     target_container.config)
 
                 if debug:
-                    _debug_message_parameters(loaded_module)
+                    _debug_message_parameters(loaded_module, target_container.target)
 
                 result_hdus = loaded_module.execute(opened_file)
                 _concatenate_hdus(opened_file, result_hdus)
@@ -254,8 +254,8 @@ def _debug_message_final_configuration(target: str, final_configuration: dict) -
     print(message)
 
 
-def _debug_message_parameters(loaded_module: AbstractModule) -> None:
-    print(f"\n>>> Module Loaded: {loaded_module.name}")
+def _debug_message_parameters(loaded_module: AbstractModule, target: str) -> None:
+    print(f"\n>>> Module Loaded: {loaded_module.name} (target: {target})")
     print(f"___ Default Par: {loaded_module.default_parameters}")
     print(f"___ Received Par: {loaded_module.received_config}")
     print(f"___ Run Config Par: {loaded_module.config}")
