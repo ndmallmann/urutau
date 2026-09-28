@@ -659,9 +659,10 @@ class MainWindow(QMainWindow):
             "Fixed: kills any spaxel's STARLIGHT process past 'Timeout Minutes'. Adaptive: "
             "kills a process running longer than 'Timeout Multiplier' × the average duration "
             "of the last 'Rolling Window' spaxels that finished normally in this same target "
-            "— 'Timeout Minutes' is used as a fallback limit until enough of them have run. A "
-            "killed spaxel is simply recorded as a failed spaxel, like any other STARLIGHT "
-            "failure."
+            "— capped at 'Timeout Minutes', so a high average can never push the wait past it "
+            "('Timeout Minutes' is also the fallback limit until enough spaxels have run to "
+            "compute that average). A killed spaxel is simply recorded as a failed spaxel, "
+            "like any other STARLIGHT failure."
         )
         info_timeout.setProperty("muted", "true")
         info_timeout.setWordWrap(True)

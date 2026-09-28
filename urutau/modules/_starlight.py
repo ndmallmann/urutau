@@ -47,10 +47,14 @@ class StarlightOnUrutau(AbstractModule):
               longer than "timeout minutes") or "adaptive" (kills a process
               running longer than "timeout multiplier" times the rolling
               average duration of the last "timeout window" spaxels that
-              finished normally in this same target; "timeout minutes" is
-              used as a fallback limit while fewer samples than that exist)
-            - "timeout minutes" = [Optional] fixed timeout in minutes, or the
-              adaptive warm-up fallback (default = None, i.e. no limit)
+              finished normally in this same target — capped at "timeout
+              minutes", so a high rolling average can never push the
+              effective timeout past it; "timeout minutes" is also used as
+              the fallback limit while fewer samples than that exist yet)
+            - "timeout minutes" = [Optional] fixed timeout in minutes; in
+              "adaptive" mode it is both the warm-up fallback and the hard
+              ceiling on the computed timeout (default = None, i.e. no limit
+              in "fixed"/warm-up, and no ceiling in "adaptive")
             - "timeout window" = [Optional] number of recent per-spaxel
               durations averaged in "adaptive" mode (default = 15)
             - "timeout multiplier" = [Optional] multiplier applied to that
