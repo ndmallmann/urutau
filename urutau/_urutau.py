@@ -255,7 +255,7 @@ def _debug_message_final_configuration(target: str, final_configuration: dict) -
 
 
 def _debug_message_parameters(loaded_module: AbstractModule, target: str) -> None:
-    print(f"\n>>> Module Loaded: {loaded_module.name} (target: {target})")
+    print(f"\n>>> Module Loaded: {loaded_module.name} (target: {os.path.basename(target)})")
     print(f"___ Default Par: {loaded_module.default_parameters}")
     print(f"___ Received Par: {loaded_module.received_config}")
     print(f"___ Run Config Par: {loaded_module.config}")
