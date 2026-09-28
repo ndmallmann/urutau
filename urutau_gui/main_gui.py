@@ -688,14 +688,22 @@ class MainWindow(QMainWindow):
         )
         lay.addWidget(row)
 
+        row, self.spin_timeout_minimum = labeled_double(
+            "Timeout Minimum:", min_val=0.0, max_val=10000.0, decimals=2, default_val=0.0,
+            suffix="min — 0 = no floor"
+        )
+        lay.addWidget(row)
+
         info_timeout = QLabel(
             "Fixed: kills any spaxel's STARLIGHT process past 'Timeout Minutes'. Adaptive: "
             "kills a process running longer than 'Timeout Multiplier' × the average duration "
             "of the last 'Rolling Window' spaxels that finished normally in this same target "
-            "— capped at 'Timeout Minutes', so a high average can never push the wait past it "
-            "('Timeout Minutes' is also the fallback limit until enough spaxels have run to "
-            "compute that average). A killed spaxel is simply recorded as a failed spaxel, "
-            "like any other STARLIGHT failure."
+            "— capped at 'Timeout Minutes' (a high average can never push the wait past it) "
+            "and floored at 'Timeout Minimum' (a low average can never push it below that, so "
+            "ordinary spaxels aren't killed just because the recent average dipped). 'Timeout "
+            "Minutes' is also the fallback limit until enough spaxels have run to compute that "
+            "average. A killed spaxel is simply recorded as a failed spaxel, like any other "
+            "STARLIGHT failure."
         )
         info_timeout.setProperty("muted", "true")
         info_timeout.setWordWrap(True)
@@ -786,6 +794,7 @@ class MainWindow(QMainWindow):
         self.spin_timeout_minutes.setEnabled(mode in ("fixed", "adaptive"))
         self.spin_timeout_window.setEnabled(mode == "adaptive")
         self.spin_timeout_multiplier.setEnabled(mode == "adaptive")
+        self.spin_timeout_minimum.setEnabled(mode == "adaptive")
 
     def _timeout_mode_key(self) -> str:
         return {
@@ -926,6 +935,11 @@ class MainWindow(QMainWindow):
                 ),
                 "timeout_window": self.spin_timeout_window.value(),
                 "timeout_multiplier": self.spin_timeout_multiplier.value(),
+                "timeout_minimum_minutes": (
+                    self.spin_timeout_minimum.value()
+                    if self._timeout_mode_key() == "adaptive" and self.spin_timeout_minimum.value() > 0
+                    else None
+                ),
                 "population_ages": self.table_population_ages.get_dict(),
                 "sfr_ages": self.table_sfr_ages.get_dict(),
                 "ret_mass_ages": self.table_ret_mass_ages.get_dict(),
@@ -1147,6 +1161,7 @@ class MainWindow(QMainWindow):
         self.spin_timeout_minutes.setValue(sl.get("timeout_minutes") or 15.0)
         self.spin_timeout_window.setValue(sl.get("timeout_window", 15))
         self.spin_timeout_multiplier.setValue(sl.get("timeout_multiplier", 2.0))
+        self.spin_timeout_minimum.setValue(sl.get("timeout_minimum_minutes") or 0.0)
         self._on_timeout_mode_changed()
         self.table_population_ages.set_dict(sl.get("population_ages", {}))
         self.table_sfr_ages.set_dict(sl.get("sfr_ages", {}))

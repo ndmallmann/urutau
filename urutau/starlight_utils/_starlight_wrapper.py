@@ -52,12 +52,15 @@ class StarlightWrapper(ABC):
         # process, "fixed" kills any process past timeout_minutes, "adaptive"
         # recomputes the limit from the rolling average of the last
         # timeout_window completed (non-killed) process durations, times
-        # timeout_multiplier — capped at timeout_minutes, so a high average
-        # can never push the effective timeout past it; timeout_minutes is
-        # also used as the fallback limit while fewer than timeout_window
-        # samples are available yet.
+        # timeout_multiplier — capped at timeout_minutes (a high average can
+        # never push it past that) and floored at timeout_minimum_minutes (a
+        # low average can never push it below that, so ordinary spaxels that
+        # are only a bit slower than usual aren't killed just because the
+        # recent average happened to dip); timeout_minutes is also used as
+        # the fallback limit while fewer than timeout_window samples exist.
         self._timeout_mode = "none"
         self._timeout_minutes = None
+        self._timeout_minimum_minutes = None
         self._timeout_window = 15
         self._timeout_multiplier = 2.0
         self._timed_out_grids = list()
@@ -94,7 +97,7 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_minimum_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
@@ -129,6 +132,13 @@ class StarlightWrapper(ABC):
                                       the hard ceiling on the computed timeout.
                                       None/0 means no limit in "fixed"/warm-up,
                                       and no ceiling in "adaptive"
+                - timeout_minimum_minutes = [Optional] floor (minutes) under
+                                      the computed "adaptive" timeout: if the
+                                      rolling average is low, the effective
+                                      timeout is still never allowed to drop
+                                      below this. Ignored in "none"/"fixed"
+                                      modes and during the adaptive warm-up.
+                                      None/0 means no floor
                 - timeout_window   =  number of recent per-spaxel durations to
                                       average over in "adaptive" mode
                 - timeout_multiplier = multiplier applied to that rolling
@@ -146,6 +156,7 @@ class StarlightWrapper(ABC):
 
         self._timeout_mode = timeout_mode or "none"
         self._timeout_minutes = timeout_minutes
+        self._timeout_minimum_minutes = timeout_minimum_minutes
         self._timeout_window = max(1, int(timeout_window or 15))
         self._timeout_multiplier = float(timeout_multiplier or 2.0)
 
@@ -241,6 +252,7 @@ class StarlightWrapper(ABC):
         self._timed_out_grids = list()
 
         fallback_seconds = (self._timeout_minutes * 60.) if self._timeout_minutes else None
+        minimum_seconds = (self._timeout_minimum_minutes * 60.) if self._timeout_minimum_minutes else None
 
         def _current_timeout() -> float | None:
             if self._timeout_mode == "fixed":
@@ -251,9 +263,18 @@ class StarlightWrapper(ABC):
                     have_enough = len(durations) >= self._timeout_window
                 if have_enough:
                     computed = (sum(recent) / len(recent)) * self._timeout_multiplier
+                    # minimum_seconds is a floor: a low rolling average must
+                    # never be allowed to push the effective timeout below
+                    # it, so ordinary spaxels that are only a bit slower
+                    # than usual aren't killed just because the recent
+                    # average happened to dip.
+                    if minimum_seconds is not None:
+                        computed = max(computed, minimum_seconds)
                     # fallback_seconds (the configured "timeout minutes") is
-                    # also a hard ceiling here: a high rolling average must
-                    # never be allowed to push the effective timeout past it.
+                    # a hard ceiling: a high rolling average must never be
+                    # allowed to push the effective timeout past it — this
+                    # is checked last, so it always wins over the floor
+                    # above if the two were misconfigured to conflict.
                     if fallback_seconds is not None:
                         return min(computed, fallback_seconds)
                     return computed

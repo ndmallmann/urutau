@@ -228,6 +228,7 @@ def import_script(path: str) -> tuple:
         sl["mask_file"] = scfg.get("mask file") or ""
         sl["timeout_mode"] = scfg.get("timeout mode", sl["timeout_mode"])
         sl["timeout_minutes"] = scfg.get("timeout minutes", sl["timeout_minutes"])
+        sl["timeout_minimum_minutes"] = scfg.get("timeout minimum minutes", sl["timeout_minimum_minutes"])
         sl["timeout_window"] = scfg.get("timeout window", sl["timeout_window"])
         sl["timeout_multiplier"] = scfg.get("timeout multiplier", sl["timeout_multiplier"])
         sl["population_ages"] = scfg.get("population ages", {"x": (0, 13e9)})
