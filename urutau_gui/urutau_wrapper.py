@@ -88,6 +88,7 @@ def default_config() -> dict:
             "mask_file": "",
             "timeout_mode": "none",
             "timeout_minutes": None,
+            "timeout_minimum_minutes": None,
             "timeout_window": 15,
             "timeout_multiplier": 2.0,
             "population_ages": {
@@ -213,6 +214,7 @@ def build_module_chain(cfg: dict) -> list:
             "keep tmp": sl["keep_tmp"],
             "timeout mode": sl.get("timeout_mode", "none"),
             "timeout minutes": sl.get("timeout_minutes"),
+            "timeout minimum minutes": sl.get("timeout_minimum_minutes"),
             "timeout window": sl.get("timeout_window", 15),
             "timeout multiplier": sl.get("timeout_multiplier", 2.0),
         }

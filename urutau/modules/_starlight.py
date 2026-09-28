@@ -55,6 +55,13 @@ class StarlightOnUrutau(AbstractModule):
               "adaptive" mode it is both the warm-up fallback and the hard
               ceiling on the computed timeout (default = None, i.e. no limit
               in "fixed"/warm-up, and no ceiling in "adaptive")
+            - "timeout minimum minutes" = [Optional] floor (minutes) under
+              the computed "adaptive" timeout: if the rolling average is
+              low, the effective timeout is still never allowed to drop
+              below this, so ordinary spaxels that are only a bit slower
+              than usual aren't killed just because the recent average
+              happened to dip. Ignored in "none"/"fixed" modes and during
+              the adaptive warm-up (default = None, i.e. no floor)
             - "timeout window" = [Optional] number of recent per-spaxel
               durations averaged in "adaptive" mode (default = 15)
             - "timeout multiplier" = [Optional] multiplier applied to that
@@ -120,6 +127,7 @@ class StarlightOnUrutau(AbstractModule):
 
         self.default_parameters["timeout mode"] = "none"
         self.default_parameters["timeout minutes"] = None
+        self.default_parameters["timeout minimum minutes"] = None
         self.default_parameters["timeout window"] = 15
         self.default_parameters["timeout multiplier"] = 2.0
 
@@ -174,6 +182,7 @@ class StarlightOnUrutau(AbstractModule):
                                           keep_tmp=self["keep tmp"],
                                           timeout_mode=self["timeout mode"],
                                           timeout_minutes=self["timeout minutes"],
+                                          timeout_minimum_minutes=self["timeout minimum minutes"],
                                           timeout_window=self["timeout window"],
                                           timeout_multiplier=self["timeout multiplier"])
 
