@@ -6,6 +6,7 @@
 import itertools as it
 import math
 import os
+import queue
 import re
 import subprocess as sp
 import threading as th
@@ -51,8 +52,10 @@ class StarlightWrapper(ABC):
         # process, "fixed" kills any process past timeout_minutes, "adaptive"
         # recomputes the limit from the rolling average of the last
         # timeout_window completed (non-killed) process durations, times
-        # timeout_multiplier; timeout_minutes is then only used as a
-        # fallback while fewer than timeout_window samples are available.
+        # timeout_multiplier — capped at timeout_minutes, so a high average
+        # can never push the effective timeout past it; timeout_minutes is
+        # also used as the fallback limit while fewer than timeout_window
+        # samples are available yet.
         self._timeout_mode = "none"
         self._timeout_minutes = None
         self._timeout_window = 15
@@ -116,12 +119,16 @@ class StarlightWrapper(ABC):
                                       longer than timeout_multiplier times the
                                       rolling average of the last
                                       timeout_window completed process
-                                      durations for this cube; timeout_minutes
-                                      is used as a fallback limit while fewer
-                                      than timeout_window samples exist)
-                - timeout_minutes  =  fixed timeout (minutes), or the
-                                      adaptive warm-up fallback; None/0 means
-                                      no limit while in that state
+                                      durations for this cube, capped at
+                                      timeout_minutes so a high average can
+                                      never push it past that; timeout_minutes
+                                      is also the fallback limit while fewer
+                                      than timeout_window samples exist yet)
+                - timeout_minutes  =  fixed timeout (minutes); in "adaptive"
+                                      mode it is both the warm-up fallback and
+                                      the hard ceiling on the computed timeout.
+                                      None/0 means no limit in "fixed"/warm-up,
+                                      and no ceiling in "adaptive"
                 - timeout_window   =  number of recent per-spaxel durations to
                                       average over in "adaptive" mode
                 - timeout_multiplier = multiplier applied to that rolling
@@ -216,6 +223,15 @@ class StarlightWrapper(ABC):
 
     def _call_starlight(self, full_grids_list: list[str]) -> None:
 
+        # A shared work queue instead of a static per-thread split: whichever
+        # thread finishes its current spaxel first immediately picks up the
+        # next pending one. With a fixed split, a handful of slow spaxels
+        # assigned to one thread would leave every other thread idle at the
+        # tail of the run instead of helping clear the remaining backlog.
+        grid_queue: queue.Queue = queue.Queue()
+        for grid in full_grids_list:
+            grid_queue.put(grid)
+
         # Shared across all worker threads: durations of processes that ran
         # to completion (killed ones are excluded, since their elapsed time
         # is just the timeout itself, not a real measurement), and the
@@ -234,12 +250,23 @@ class StarlightWrapper(ABC):
                     recent = durations[-self._timeout_window:]
                     have_enough = len(durations) >= self._timeout_window
                 if have_enough:
-                    return (sum(recent) / len(recent)) * self._timeout_multiplier
+                    computed = (sum(recent) / len(recent)) * self._timeout_multiplier
+                    # fallback_seconds (the configured "timeout minutes") is
+                    # also a hard ceiling here: a high rolling average must
+                    # never be allowed to push the effective timeout past it.
+                    if fallback_seconds is not None:
+                        return min(computed, fallback_seconds)
+                    return computed
                 return fallback_seconds
             return None
 
-        def _starlight_thread(grid_list: list[str], exec_name: str, exec_dir: str) -> None:
-            for grid in grid_list:
+        def _starlight_thread(exec_name: str, exec_dir: str) -> None:
+            while True:
+                try:
+                    grid = grid_queue.get_nowait()
+                except queue.Empty:
+                    return
+
                 timeout = _current_timeout()
                 start_time = time.monotonic()
 
@@ -255,15 +282,17 @@ class StarlightWrapper(ABC):
                         with durations_lock:
                             self._timed_out_grids.append(grid)
                         print(f"[STARLIGHT] Killed process past {timeout:.0f}s timeout: {grid}")
+                        grid_queue.task_done()
                         continue
 
                 with durations_lock:
                     durations.append(time.monotonic() - start_time)
+                grid_queue.task_done()
 
         workers: list[th.Thread] = list()
 
-        for grid_list in np.array_split(full_grids_list, self._num_threads):
-            arguments = (grid_list, self._sl_exec_name, self._sl_dir)
+        for _ in range(self._num_threads):
+            arguments = (self._sl_exec_name, self._sl_dir)
             worker = th.Thread(target=_starlight_thread, args=arguments)
             worker.start()
             workers.append(worker)
