@@ -7,6 +7,8 @@ produces / MainWindow._apply_config() consumes, so the same dict can be
 saved/loaded as JSON and reused from scripts.
 """
 
+import os
+
 from urutau import Urutau
 from urutau.modules import (
     SpatialResampler,
@@ -50,6 +52,7 @@ def default_config() -> dict:
     """A default configuration matching run_newurutau_bass27_upto8850.py."""
     return {
         "num_threads": 1,
+        "num_processors": os.cpu_count() or 1,
         "input": {
             "data_hdu": "DATA",
             "stat_hdu": "STAT",
@@ -75,6 +78,7 @@ def default_config() -> dict:
             "path": "./starlight/StarlightChains_v04.amd64_g77-3.4.6-r1_static.exe",
             "grid_file": "./starlight/reference_grid_muse_newMiles.in",
             "num_threads": 52,
+            "auto_threads": True,
             "flag_threshold": 10,
             "galaxy_distance": 0.0,
             "redshift": 0.0,
