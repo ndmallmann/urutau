@@ -961,7 +961,11 @@ class StarlightGeneric(StarlightWrapper):
         return np.sum(sl_out.m_cor_j[age_index * exclude_bb * exclude_fc]) * sum_factor
 
     def _sfr_at_age(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
-        m_cor_t = self._m_cor_t(sl_out)
+        # Uses the total INITIAL mass (m_ini_t), matching the MEGACUBES paper
+        # definition and the urutau version that generated the published
+        # MEGACUBES — not the total current/corrected mass (m_cor_t), which
+        # a prior version of this code used by mistake.
+        m_ini_t = self._m_ini_t(sl_out)
 
         exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
         exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
@@ -969,7 +973,7 @@ class StarlightGeneric(StarlightWrapper):
         age_range = age_max - age_min
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
 
-        m_total_factor = m_cor_t / (100. * age_range)
+        m_total_factor = m_ini_t / (100. * age_range)
         sfr_value = np.sum(sl_out.m_ini_j[age_index * exclude_bb * exclude_fc]) * m_total_factor
 
         return sfr_value
