@@ -32,6 +32,21 @@ from .urutau_wrapper import (
 )
 from .base_grid_utils import read_base_components, find_agn_bin_conflicts, BaseGridError
 from .script_export import generate_script
+from .script_import import import_script, ScriptImportError
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+def get_logo_path():
+    """Return the path to the Urutau logo, or None if not found."""
+    pkg_dir = os.path.dirname(os.path.abspath(__file__))
+    for ext in ("jpeg", "jpg", "png"):
+        p = os.path.join(pkg_dir, "assets", f"logo.{ext}")
+        if os.path.isfile(p):
+            return p
+    return None
 
 
 # ---------------------------------------------------------------------------
@@ -238,6 +253,12 @@ class MainWindow(QMainWindow):
         btn_export_script.clicked.connect(self._on_export_script)
         layout.addWidget(btn_export_script)
 
+        btn_load_script = QPushButton("Load Script (.py)")
+        btn_load_script.setObjectName("minorBtn")
+        btn_load_script.setCursor(Qt.PointingHandCursor)
+        btn_load_script.clicked.connect(self._on_load_script)
+        layout.addWidget(btn_load_script)
+
         btn_reset = QPushButton("Reset to Defaults")
         btn_reset.setObjectName("minorBtn")
         btn_reset.setCursor(Qt.PointingHandCursor)
@@ -327,10 +348,29 @@ class MainWindow(QMainWindow):
         lay.addWidget(info_overwrite)
 
         threads_row, self.spin_num_threads = labeled_int(
-            "Urutau Threads:", min_val=1, max_val=256, default_val=1,
-            suffix="parallel targets"
+            "Simultaneous Cubes:", min_val=1, max_val=256, default_val=1,
+            suffix="targets processed at once"
         )
+        self.spin_num_threads.valueChanged.connect(self._recompute_starlight_threads)
         lay.addWidget(threads_row)
+
+        proc_row, self.spin_num_processors = labeled_int(
+            "Number of Processors:", min_val=1, max_val=4096,
+            default_val=os.cpu_count() or 1, suffix="total CPU budget"
+        )
+        self.spin_num_processors.valueChanged.connect(self._recompute_starlight_threads)
+        lay.addWidget(proc_row)
+
+        info_processors = QLabel(
+            "STARLIGHT's own per-cube thread count (set in the Starlight panel below) is "
+            "auto-balanced from these two: Number of Processors ÷ Simultaneous Cubes — so "
+            "running more cubes at once automatically gives each of them a smaller, "
+            "non-oversubscribing share of the machine, instead of every cube independently "
+            "trying to use the same full thread count."
+        )
+        info_processors.setProperty("muted", "true")
+        info_processors.setWordWrap(True)
+        lay.addWidget(info_processors)
 
         self._add_panel(self.grp_targets)
 
@@ -602,6 +642,13 @@ class MainWindow(QMainWindow):
         )
         lay.addWidget(row)
 
+        self.chk_auto_starlight_threads = QCheckBox(
+            "  Auto-balance (Number of Processors ÷ Simultaneous Cubes, from Section 1)"
+        )
+        self.chk_auto_starlight_threads.setChecked(True)
+        self.chk_auto_starlight_threads.toggled.connect(self._on_auto_starlight_threads_toggled)
+        lay.addWidget(self.chk_auto_starlight_threads)
+
         row, self.spin_flag_threshold = labeled_int(
             "S/N Flag Threshold:", min_val=0, max_val=100000, default_val=10,
             suffix="(must match an S/N Mask threshold)"
@@ -655,13 +702,22 @@ class MainWindow(QMainWindow):
         )
         lay.addWidget(row)
 
+        row, self.spin_timeout_minimum = labeled_double(
+            "Timeout Minimum:", min_val=0.0, max_val=10000.0, decimals=2, default_val=0.0,
+            suffix="min — 0 = no floor"
+        )
+        lay.addWidget(row)
+
         info_timeout = QLabel(
             "Fixed: kills any spaxel's STARLIGHT process past 'Timeout Minutes'. Adaptive: "
             "kills a process running longer than 'Timeout Multiplier' × the average duration "
             "of the last 'Rolling Window' spaxels that finished normally in this same target "
-            "— 'Timeout Minutes' is used as a fallback limit until enough of them have run. A "
-            "killed spaxel is simply recorded as a failed spaxel, like any other STARLIGHT "
-            "failure."
+            "— capped at 'Timeout Minutes' (a high average can never push the wait past it) "
+            "and floored at 'Timeout Minimum' (a low average can never push it below that, so "
+            "ordinary spaxels aren't killed just because the recent average dipped). 'Timeout "
+            "Minutes' is also the fallback limit until enough spaxels have run to compute that "
+            "average. A killed spaxel is simply recorded as a failed spaxel, like any other "
+            "STARLIGHT failure."
         )
         info_timeout.setProperty("muted", "true")
         info_timeout.setWordWrap(True)
@@ -732,11 +788,27 @@ class MainWindow(QMainWindow):
         lbl.setStyleSheet(f"color: {ACCENT}; font-weight: 600; font-size: 12px; margin-top: 6px;")
         return lbl
 
+    def _on_auto_starlight_threads_toggled(self, checked):
+        self.spin_starlight_threads.setEnabled(not checked)
+        if checked:
+            self._recompute_starlight_threads()
+
+    def _recompute_starlight_threads(self):
+        if not hasattr(self, "chk_auto_starlight_threads") or not self.chk_auto_starlight_threads.isChecked():
+            return
+        cubes = max(1, self.spin_num_threads.value())
+        processors = max(1, self.spin_num_processors.value())
+        computed = max(1, processors // cubes)
+        self.spin_starlight_threads.blockSignals(True)
+        self.spin_starlight_threads.setValue(computed)
+        self.spin_starlight_threads.blockSignals(False)
+
     def _on_timeout_mode_changed(self):
         mode = self._timeout_mode_key()
         self.spin_timeout_minutes.setEnabled(mode in ("fixed", "adaptive"))
         self.spin_timeout_window.setEnabled(mode == "adaptive")
         self.spin_timeout_multiplier.setEnabled(mode == "adaptive")
+        self.spin_timeout_minimum.setEnabled(mode == "adaptive")
 
     def _timeout_mode_key(self) -> str:
         return {
@@ -820,6 +892,7 @@ class MainWindow(QMainWindow):
     def _gather_config(self) -> dict:
         cfg = {
             "num_threads": self.spin_num_threads.value(),
+            "num_processors": self.spin_num_processors.value(),
             "input": {
                 "data_hdu": self.edit_data_hdu.text().strip() or "DATA",
                 "stat_hdu": self.edit_stat_hdu.text().strip() or "STAT",
@@ -860,6 +933,7 @@ class MainWindow(QMainWindow):
                 "path": self.pick_starlight_exe.text(),
                 "grid_file": self.pick_starlight_grid.text(),
                 "num_threads": self.spin_starlight_threads.value(),
+                "auto_threads": self.chk_auto_starlight_threads.isChecked(),
                 "flag_threshold": self.spin_flag_threshold.value(),
                 "galaxy_distance": self.spin_gal_distance.value(),
                 "redshift": self.spin_starlight_redshift.value(),
@@ -875,6 +949,11 @@ class MainWindow(QMainWindow):
                 ),
                 "timeout_window": self.spin_timeout_window.value(),
                 "timeout_multiplier": self.spin_timeout_multiplier.value(),
+                "timeout_minimum_minutes": (
+                    self.spin_timeout_minimum.value()
+                    if self._timeout_mode_key() == "adaptive" and self.spin_timeout_minimum.value() > 0
+                    else None
+                ),
                 "population_ages": self.table_population_ages.get_dict(),
                 "sfr_ages": self.table_sfr_ages.get_dict(),
                 "ret_mass_ages": self.table_ret_mass_ages.get_dict(),
@@ -1025,6 +1104,7 @@ class MainWindow(QMainWindow):
 
     def _apply_config(self, cfg: dict):
         self.spin_num_threads.setValue(cfg.get("num_threads", 1))
+        self.spin_num_processors.setValue(cfg.get("num_processors", os.cpu_count() or 1))
 
         inp = cfg.get("input", {})
         self.edit_data_hdu.setText(inp.get("data_hdu", "DATA"))
@@ -1075,6 +1155,10 @@ class MainWindow(QMainWindow):
         self.pick_starlight_exe.set_text(sl.get("path", ""))
         self.pick_starlight_grid.set_text(sl.get("grid_file", ""))
         self.spin_starlight_threads.setValue(sl.get("num_threads", 1))
+        self.chk_auto_starlight_threads.setChecked(sl.get("auto_threads", True))
+        self.spin_starlight_threads.setEnabled(not self.chk_auto_starlight_threads.isChecked())
+        if self.chk_auto_starlight_threads.isChecked():
+            self._recompute_starlight_threads()
         self.spin_flag_threshold.setValue(sl.get("flag_threshold") or 0)
         self.spin_gal_distance.setValue(sl.get("galaxy_distance", 0.0))
         self.spin_starlight_redshift.setValue(sl.get("redshift", 0.0))
@@ -1091,6 +1175,7 @@ class MainWindow(QMainWindow):
         self.spin_timeout_minutes.setValue(sl.get("timeout_minutes") or 15.0)
         self.spin_timeout_window.setValue(sl.get("timeout_window", 15))
         self.spin_timeout_multiplier.setValue(sl.get("timeout_multiplier", 2.0))
+        self.spin_timeout_minimum.setValue(sl.get("timeout_minimum_minutes") or 0.0)
         self._on_timeout_mode_changed()
         self.table_population_ages.set_dict(sl.get("population_ages", {}))
         self.table_sfr_ages.set_dict(sl.get("sfr_ages", {}))
@@ -1180,6 +1265,53 @@ class MainWindow(QMainWindow):
             f"Saved to:\n{path}\n\nThe targets CSV was (re)written to:\n{cfg['targets']['csv']}\n\n"
             f"Run it with:\n    python {os.path.basename(path)}"
         )
+
+    def _on_load_script(self):
+        """
+        Reads an existing run_*.py script and fills the GUI's forms from it,
+        the inverse of "Export Script". Works by executing the script with a
+        stand-in Urutau class that records its add_module()/read_csv()/
+        execute() calls instead of running a real pipeline — same trust
+        level as running the script yourself, so only load ones you trust.
+        """
+        if self.worker and self.worker.isRunning():
+            QMessageBox.warning(self, "Running", "Wait for the current run to finish first.")
+            return
+
+        path, _ = QFileDialog.getOpenFileName(
+            self, "Load Urutau Script", "", "Python Files (*.py);;All Files (*)"
+        )
+        if not path:
+            return
+
+        reply = QMessageBox.question(
+            self, "Load Script",
+            "This runs the script's own code to read its configuration — the same as running "
+            f"it yourself. Only continue if you trust '{os.path.basename(path)}'.",
+            QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+        )
+        if reply != QMessageBox.Yes:
+            return
+
+        try:
+            cfg, warnings = import_script(path)
+        except ScriptImportError as e:
+            QMessageBox.critical(self, "Could Not Load Script", str(e))
+            return
+        except Exception as e:
+            QMessageBox.critical(self, "Could Not Load Script", f"Unexpected error: {e}")
+            return
+
+        self._apply_config(cfg)
+        self.statusBar().showMessage(f"Configuration imported from {path}")
+
+        if warnings:
+            QMessageBox.warning(
+                self, "Imported With Warnings",
+                "The script's configuration was imported, but:\n\n" + "\n\n".join(f"• {w}" for w in warnings)
+            )
+        else:
+            QMessageBox.information(self, "Script Loaded", f"Configuration imported from:\n{path}")
 
 
 # ---------------------------------------------------------------------------
