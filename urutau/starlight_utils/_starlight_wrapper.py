@@ -6,6 +6,7 @@
 import itertools as it
 import math
 import os
+import queue
 import re
 import subprocess as sp
 import threading as th
@@ -51,10 +52,15 @@ class StarlightWrapper(ABC):
         # process, "fixed" kills any process past timeout_minutes, "adaptive"
         # recomputes the limit from the rolling average of the last
         # timeout_window completed (non-killed) process durations, times
-        # timeout_multiplier; timeout_minutes is then only used as a
-        # fallback while fewer than timeout_window samples are available.
+        # timeout_multiplier — capped at timeout_minutes (a high average can
+        # never push it past that) and floored at timeout_minimum_minutes (a
+        # low average can never push it below that, so ordinary spaxels that
+        # are only a bit slower than usual aren't killed just because the
+        # recent average happened to dip); timeout_minutes is also used as
+        # the fallback limit while fewer than timeout_window samples exist.
         self._timeout_mode = "none"
         self._timeout_minutes = None
+        self._timeout_minimum_minutes = None
         self._timeout_window = 15
         self._timeout_multiplier = 2.0
         self._timed_out_grids = list()
@@ -91,7 +97,7 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_minimum_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
@@ -116,12 +122,23 @@ class StarlightWrapper(ABC):
                                       longer than timeout_multiplier times the
                                       rolling average of the last
                                       timeout_window completed process
-                                      durations for this cube; timeout_minutes
-                                      is used as a fallback limit while fewer
-                                      than timeout_window samples exist)
-                - timeout_minutes  =  fixed timeout (minutes), or the
-                                      adaptive warm-up fallback; None/0 means
-                                      no limit while in that state
+                                      durations for this cube, capped at
+                                      timeout_minutes so a high average can
+                                      never push it past that; timeout_minutes
+                                      is also the fallback limit while fewer
+                                      than timeout_window samples exist yet)
+                - timeout_minutes  =  fixed timeout (minutes); in "adaptive"
+                                      mode it is both the warm-up fallback and
+                                      the hard ceiling on the computed timeout.
+                                      None/0 means no limit in "fixed"/warm-up,
+                                      and no ceiling in "adaptive"
+                - timeout_minimum_minutes = [Optional] floor (minutes) under
+                                      the computed "adaptive" timeout: if the
+                                      rolling average is low, the effective
+                                      timeout is still never allowed to drop
+                                      below this. Ignored in "none"/"fixed"
+                                      modes and during the adaptive warm-up.
+                                      None/0 means no floor
                 - timeout_window   =  number of recent per-spaxel durations to
                                       average over in "adaptive" mode
                 - timeout_multiplier = multiplier applied to that rolling
@@ -139,6 +156,7 @@ class StarlightWrapper(ABC):
 
         self._timeout_mode = timeout_mode or "none"
         self._timeout_minutes = timeout_minutes
+        self._timeout_minimum_minutes = timeout_minimum_minutes
         self._timeout_window = max(1, int(timeout_window or 15))
         self._timeout_multiplier = float(timeout_multiplier or 2.0)
 
@@ -216,6 +234,15 @@ class StarlightWrapper(ABC):
 
     def _call_starlight(self, full_grids_list: list[str]) -> None:
 
+        # A shared work queue instead of a static per-thread split: whichever
+        # thread finishes its current spaxel first immediately picks up the
+        # next pending one. With a fixed split, a handful of slow spaxels
+        # assigned to one thread would leave every other thread idle at the
+        # tail of the run instead of helping clear the remaining backlog.
+        grid_queue: queue.Queue = queue.Queue()
+        for grid in full_grids_list:
+            grid_queue.put(grid)
+
         # Shared across all worker threads: durations of processes that ran
         # to completion (killed ones are excluded, since their elapsed time
         # is just the timeout itself, not a real measurement), and the
@@ -225,6 +252,7 @@ class StarlightWrapper(ABC):
         self._timed_out_grids = list()
 
         fallback_seconds = (self._timeout_minutes * 60.) if self._timeout_minutes else None
+        minimum_seconds = (self._timeout_minimum_minutes * 60.) if self._timeout_minimum_minutes else None
 
         def _current_timeout() -> float | None:
             if self._timeout_mode == "fixed":
@@ -234,12 +262,32 @@ class StarlightWrapper(ABC):
                     recent = durations[-self._timeout_window:]
                     have_enough = len(durations) >= self._timeout_window
                 if have_enough:
-                    return (sum(recent) / len(recent)) * self._timeout_multiplier
+                    computed = (sum(recent) / len(recent)) * self._timeout_multiplier
+                    # minimum_seconds is a floor: a low rolling average must
+                    # never be allowed to push the effective timeout below
+                    # it, so ordinary spaxels that are only a bit slower
+                    # than usual aren't killed just because the recent
+                    # average happened to dip.
+                    if minimum_seconds is not None:
+                        computed = max(computed, minimum_seconds)
+                    # fallback_seconds (the configured "timeout minutes") is
+                    # a hard ceiling: a high rolling average must never be
+                    # allowed to push the effective timeout past it — this
+                    # is checked last, so it always wins over the floor
+                    # above if the two were misconfigured to conflict.
+                    if fallback_seconds is not None:
+                        return min(computed, fallback_seconds)
+                    return computed
                 return fallback_seconds
             return None
 
-        def _starlight_thread(grid_list: list[str], exec_name: str, exec_dir: str) -> None:
-            for grid in grid_list:
+        def _starlight_thread(exec_name: str, exec_dir: str) -> None:
+            while True:
+                try:
+                    grid = grid_queue.get_nowait()
+                except queue.Empty:
+                    return
+
                 timeout = _current_timeout()
                 start_time = time.monotonic()
 
@@ -255,15 +303,17 @@ class StarlightWrapper(ABC):
                         with durations_lock:
                             self._timed_out_grids.append(grid)
                         print(f"[STARLIGHT] Killed process past {timeout:.0f}s timeout: {grid}")
+                        grid_queue.task_done()
                         continue
 
                 with durations_lock:
                     durations.append(time.monotonic() - start_time)
+                grid_queue.task_done()
 
         workers: list[th.Thread] = list()
 
-        for grid_list in np.array_split(full_grids_list, self._num_threads):
-            arguments = (grid_list, self._sl_exec_name, self._sl_dir)
+        for _ in range(self._num_threads):
+            arguments = (self._sl_exec_name, self._sl_dir)
             worker = th.Thread(target=_starlight_thread, args=arguments)
             worker.start()
             workers.append(worker)
@@ -911,7 +961,8 @@ class StarlightGeneric(StarlightWrapper):
         return np.sum(sl_out.m_cor_j[age_index * exclude_bb * exclude_fc]) * sum_factor
 
     def _sfr_at_age(self, sl_out: StarlightOutput, age_min: float, age_max: float) -> float:
-        m_cor_t = self._m_cor_t(sl_out)
+
+        m_ini_t = self._m_ini_t(sl_out)
 
         exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j])
         exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j])
@@ -919,7 +970,7 @@ class StarlightGeneric(StarlightWrapper):
         age_range = age_max - age_min
         age_index = (sl_out.age_j > age_min) * (sl_out.age_j <= age_max)
 
-        m_total_factor = m_cor_t / (100. * age_range)
+        m_total_factor = m_ini_t / (100. * age_range)
         sfr_value = np.sum(sl_out.m_ini_j[age_index * exclude_bb * exclude_fc]) * m_total_factor
 
         return sfr_value

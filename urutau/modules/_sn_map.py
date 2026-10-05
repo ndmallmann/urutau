@@ -194,11 +194,14 @@ class SNMaskWithIVar(GenericSNMask):
         flux_cut = flux_data[left_index:right_index, :, :]
         mean_flux = np.mean(flux_cut, axis=0)
 
+        # sqrt(ivar) = 1/error, so mean_sqrt_ivar is already the mean inverse
+        # error over the window; S/N = flux * (1/error) needs no further
+        # sqrt() here (a prior version of this code applied sqrt() twice).
         sqrt_ivar_data = np.sqrt(ivar_data)
         sqrt_ivar_cut = sqrt_ivar_data[left_index:right_index, :, :]
         mean_sqrt_ivar = np.mean(sqrt_ivar_cut, axis=0)
 
-        sn_ratio_map = mean_flux * np.sqrt(mean_sqrt_ivar)
+        sn_ratio_map = mean_flux * mean_sqrt_ivar
 
         return sn_ratio_map
 
