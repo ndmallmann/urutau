@@ -32,7 +32,9 @@ class StarlightOnUrutau(AbstractModule):
             - "fc exps" = [Optional] featureless continuum exponent limits (default = {})
             - "bb temps" = [Optional] black body temperature limits (default = {})
             - "redshift" = [Optional] redshift (for correction) (default = 0.)
-            - "normalization factor" = [Optional] flux's normalization value (default = 1.)
+            - "normalization factor" = [Optional] flux's normalization value (default = 1.).
+              Multiplied into the spectrum (flux and error) before the STARLIGHT synthesis,
+              so the derived masses, SFRs and returned masses already include it.
             - "flux unit" = [Optional] flux unit's unit (default = "")
             - "keep tmp" = [Optional] keep temp files (True) or not (False) (default = False)
             - "mask file" = [Optional] overrides the mask file name taken from

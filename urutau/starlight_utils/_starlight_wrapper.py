@@ -109,7 +109,12 @@ class StarlightWrapper(ABC):
                 - fc_par           =  dictionary with featureless continuum exponent ranges, ex: {"name_fc": [exp_ini_exclusive, exp_fin_inclusive]}
                 - bb_par           =  dictionary with black body temperature (kelvin) ranges, ex: {"name_bb": [temp_ini_exclusive, temp_fin_inclusive]}
                 - galaxy_distance  =  galaxy distance in Mpc
-                - norm_factor      =  flux normalization factor (to be multiplyed by the spectrum if it was already normalized)
+                - norm_factor      =  flux normalization factor (e.g. 1E-17 for a cube in units of
+                                      1E-17 erg/s/cm2/A). It is multiplied into the spectrum (flux and
+                                      error) BEFORE the synthesis, so STARLIGHT fits the spectrum in
+                                      physical units and Mini_tot/Mcor_tot already include it; it is
+                                      therefore NOT applied again to the derived masses, SFRs or
+                                      returned masses.
                 - flux_unit        =  flux unit name
                 - redshift         =  galaxy redshift
                 - ret_mass_age_par =  dictionary with returned mass age ranges, ex: {"name_ret": [age_ini_exclusive, age_fin_inclusive]}
@@ -987,8 +992,12 @@ class StarlightGeneric(StarlightWrapper):
         m_ini_sum = np.sum(sl_out.m_ini_j[mask]) / 100.0
         m_cor_sum = np.sum(sl_out.m_cor_j[mask]) / 100.0
 
-        m_ini_total = m_ini_sum * self._norm_factor * sl_out.m_ini_tot * gd_factor
-        m_cor_total = m_cor_sum * self._norm_factor * sl_out.m_cor_tot * gd_factor
+        # norm_factor is NOT applied here: it was already multiplied into the
+        # spectrum written to the STARLIGHT input file (see the data_list
+        # construction above), so Mini_tot/Mcor_tot already carry it
+        # (STARLIGHT manual, eqs. 2-3). Same convention as _m_ini_t/_m_cor_t.
+        m_ini_total = m_ini_sum * sl_out.m_ini_tot * gd_factor
+        m_cor_total = m_cor_sum * sl_out.m_cor_tot * gd_factor
 
         return m_ini_total - m_cor_total
 
