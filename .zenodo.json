@@ -1,29 +1,35 @@
 {
-    "description": "<p>Modular pipeline tool for python and astronomy (fits file).</p>", 
-    "license": "other-open", 
-    "title": "ndmallmann/urutau: Urutau", 
-    "version": "v1.0.0", 
-    "upload_type": "software", 
-    "publication_date": "2023-08-18", 
+    "title": "Urutau: a modular and parallel pipeline for integral field datacubes",
+    "description": "<p>Urutau is a modular Python pipeline that runs codes originally developed for single spectra (e.g. full spectral fitting with STARLIGHT) on integral field spectroscopy datacubes, processing several datacubes and spaxels in parallel. Modules read and append extensions to the original FITS file. Built-in modules perform spatial Butterworth filtering, Galactic dereddening, resolution degradation, spatial and spectral resampling, signal-to-noise masking and the spaxel-by-spaxel STARLIGHT synthesis (with dynamic load balancing and adaptive timeouts). A PyQt5 graphical interface (urutau-gui) is also provided.</p>",
+    "upload_type": "software",
+    "version": "v2.0.0",
+    "license": "mit",
+    "access_right": "open",
     "creators": [
         {
-            "name": "Nícolas Dullius Mallmann"
-        }, 
+            "name": "Dullius Mallmann, Nícolas",
+            "affiliation": "Max-Planck-Institut für extraterrestrische Physik",
+            "orcid": "0000-0001-9159-004X"
+        },
         {
-            "name": "Rogério Riffel"
+            "name": "Riffel, Rogério",
+            "affiliation": "Universidade Federal do Rio Grande do Sul",
+            "orcid": "0000-0002-1321-1320"
         }
-    ], 
-    "access_right": "open", 
+    ],
+    "keywords": [
+        "astronomy",
+        "integral field spectroscopy",
+        "datacubes",
+        "stellar populations",
+        "spectral fitting",
+        "pipeline"
+    ],
     "related_identifiers": [
         {
-            "scheme": "url", 
-            "identifier": "https://github.com/ndmallmann/urutau/tree/v1.0.0", 
+            "scheme": "url",
+            "identifier": "https://github.com/ndmallmann/urutau/tree/v2.0.0",
             "relation": "isSupplementTo"
-        }, 
-        {
-            "scheme": "doi", 
-            "identifier": "10.5281/zenodo.8263935", 
-            "relation": "isVersionOf"
         }
     ]
 }

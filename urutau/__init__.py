@@ -1,4 +1,4 @@
-__version__ = "1.2"
+__version__ = "2.0.0"
 
 from ._urutau import Urutau
 
