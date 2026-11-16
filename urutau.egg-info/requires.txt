@@ -1,6 +1,0 @@
-astropy
-pandas
-scipy
-
-[gui]
-PyQt5
