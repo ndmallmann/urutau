@@ -387,3 +387,10 @@ class MyModule(AbstractModule):
 as a requirement, the module must define the methods "_set_init_default_parameters" and "execute".
 
 Here is an [example](/examples/creating_modules/creating_simple.py) of how to create a very simple module.
+## Citation
+
+If you use urutau, please cite it using the Zenodo DOI [10.5281/zenodo.8263935](https://doi.org/10.5281/zenodo.8263935) (always resolves to the latest version) or the metadata in [CITATION.cff](CITATION.cff).
+
+## License
+
+Urutau is distributed under the [MIT License](LICENSE).

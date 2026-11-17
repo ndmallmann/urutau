@@ -4,3 +4,5 @@ build/
 __pycache__
 tmp/
 implementation_plan_mass_ret.txt
+dist/
+*.egg-info/

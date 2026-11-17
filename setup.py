@@ -6,7 +6,8 @@ from setuptools import setup, find_packages
 
 setup(
     name="urutau",
-    version="1.2",
+    version="2.0.0",
+    license="MIT",
     packages=find_packages(),
     package_data={
         "urutau_gui": ["assets/*"],

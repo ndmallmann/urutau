@@ -1,3 +1,0 @@
-urutau
-urutau_gui
-utils
