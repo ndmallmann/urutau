@@ -225,6 +225,7 @@ def import_script(path: str) -> tuple:
         sl["normalization_factor"] = scfg.get("normalization factor", sl["normalization_factor"])
         sl["flux_unit"] = scfg.get("flux unit", sl["flux_unit"])
         sl["keep_tmp"] = scfg.get("keep tmp", sl["keep_tmp"])
+        sl["stellar_norm_light"] = scfg.get("stellar norm light", sl.get("stellar_norm_light", False))
         sl["mask_file"] = scfg.get("mask file") or ""
         sl["timeout_mode"] = scfg.get("timeout mode", sl["timeout_mode"])
         sl["timeout_minutes"] = scfg.get("timeout minutes", sl["timeout_minutes"])

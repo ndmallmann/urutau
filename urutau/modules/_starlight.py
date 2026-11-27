@@ -68,6 +68,13 @@ class StarlightOnUrutau(AbstractModule):
               durations averaged in "adaptive" mode (default = 15)
             - "timeout multiplier" = [Optional] multiplier applied to that
               rolling average in "adaptive" mode (default = 2.0)
+            - "stellar norm light" = [Optional] light normalization of the
+              light-weighted mean age and metallicity (Mage_L, MZ_L).
+              False (default): fractions of the total light (SSPs + FC/BB),
+              i.e. the AGN components count as log t = 0 and Z = 0. True:
+              renormalized to the stellar light only, so that
+              value_stellar = value_total / (1 - FC/100). The convention used
+              is recorded in the PopBins header (LNORM = TOTAL or STELLAR).
 
         Obs: a killed spaxel is simply left without a STARLIGHT output file,
             so it is picked up by the existing failed-spaxel handling exactly
@@ -132,6 +139,7 @@ class StarlightOnUrutau(AbstractModule):
         self.default_parameters["timeout minimum minutes"] = None
         self.default_parameters["timeout window"] = 15
         self.default_parameters["timeout multiplier"] = 2.0
+        self.default_parameters["stellar norm light"] = False
 
     def execute(self, input_hdu: fits.HDUList) -> fits.HDUList:
 
@@ -186,6 +194,7 @@ class StarlightOnUrutau(AbstractModule):
                                           timeout_minutes=self["timeout minutes"],
                                           timeout_minimum_minutes=self["timeout minimum minutes"],
                                           timeout_window=self["timeout window"],
-                                          timeout_multiplier=self["timeout multiplier"])
+                                          timeout_multiplier=self["timeout multiplier"],
+                                          stellar_norm_light=self["stellar norm light"])
 
         return synt_hdus
