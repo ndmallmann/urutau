@@ -344,6 +344,11 @@ A couple of small but handy parameters were added since the examples above were 
 
 - `StarlightOnUrutau` accepts an optional `"mask file"` parameter that overrides the mask taken from the reference grid file. Like any other parameter, it can be set per-target through the targets CSV (e.g. a `mask file` column), so different galaxies can use different emission-line masks without needing separate grid files for each of them.
 - `StarlightOnUrutau` also accepts `"timeout mode"` ("none", "fixed" or "adaptive"), `"timeout minutes"`, `"timeout window"` and `"timeout multiplier"`, which let you automatically kill a spaxel's STARLIGHT process if it takes too long to converge — either after a fixed number of minutes, or after a multiple of the average time taken by the last few spaxels that finished normally. A killed spaxel is simply recorded as a failed spaxel, same as any other STARLIGHT failure.
+- `StarlightOnUrutau` accepts `"stellar norm light"` (default `False`), which sets how the light-weighted mean age and metallicity (`Mage_L`, `MZ_L`) are normalized:
+  - `False` (default, previous behavior): the light fractions are taken relative to the **total** light (SSPs + featureless continuum/black bodies), so all components add up to 100% and the AGN components effectively enter with log t = 0 and Z = 0.
+  - `True`: the fractions are renormalized to the **stellar** light only, which gives the mean age and metallicity of the stellar population alone.
+
+  The two are related by `value_stellar = value_total / (1 - FC/100)`, where FC is the total percentage of light in the AGN components (FC + BB). Only `Mage_L` and `MZ_L` change; the population vectors, the FC/BB fractions and the mass-weighted quantities are the same in both cases. The convention used is recorded in the `PopBins` header (`LNORM = TOTAL` or `STELLAR`) and in the comments of the `Mage_L`/`MZ_L` cards.
 - `Urutau.execute()` accepts `overwrite` (default `True`, matching the previous behavior). Setting it to `False` makes Urutau skip a target entirely — none of its modules are run — if its output file already exists in the save path, which is convenient when resuming a large batch that was interrupted partway through.
 
 ## Graphical Interface

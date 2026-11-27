@@ -674,6 +674,13 @@ class MainWindow(QMainWindow):
         self.chk_keep_tmp = QCheckBox("  Keep STARLIGHT temporary files")
         lay.addWidget(self.chk_keep_tmp)
 
+        self.chk_stellar_norm_light = QCheckBox("  Mage_L / MZ_L weighted by stellar light only (exclude FC/BB)")
+        self.chk_stellar_norm_light.setToolTip(
+            "Off (default): light fractions of the total light (SSPs + FC/BB).\n"
+            "On: renormalized to the stellar light, value_stellar = value_total / (1 - FC/100)."
+        )
+        lay.addWidget(self.chk_stellar_norm_light)
+
         lay.addWidget(self._section_label("Per-Spaxel Process Timeout  (optional)"))
 
         row, self.combo_timeout_mode = labeled_combo(
@@ -940,6 +947,7 @@ class MainWindow(QMainWindow):
                 "normalization_factor": self.spin_norm_factor.value(),
                 "flux_unit": self.edit_flux_unit.text().strip(),
                 "keep_tmp": self.chk_keep_tmp.isChecked(),
+                "stellar_norm_light": self.chk_stellar_norm_light.isChecked(),
                 "mask_file": self.edit_mask_file.text().strip(),
                 "timeout_mode": self._timeout_mode_key(),
                 "timeout_minutes": (
@@ -1165,6 +1173,7 @@ class MainWindow(QMainWindow):
         self.spin_norm_factor.setValue(sl.get("normalization_factor", 1.0))
         self.edit_flux_unit.setText(sl.get("flux_unit", ""))
         self.chk_keep_tmp.setChecked(sl.get("keep_tmp", False))
+        self.chk_stellar_norm_light.setChecked(sl.get("stellar_norm_light", False))
         self.edit_mask_file.setText(sl.get("mask_file", ""))
         mode_labels = {
             "none": "None (never kill)",

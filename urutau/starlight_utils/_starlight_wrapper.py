@@ -65,6 +65,10 @@ class StarlightWrapper(ABC):
         self._timeout_multiplier = 2.0
         self._timed_out_grids = list()
 
+        # Light normalization of Mage_L/MZ_L (see _mean_by_light): False uses
+        # the total light (SSPs + FC/BB), True only the stellar light.
+        self._stellar_norm_light = False
+
     @abstractmethod
     def _extract_cube(self, cube_data: fits.HDUList, out_dir: str) -> np.ndarray:
         """
@@ -97,7 +101,7 @@ class StarlightWrapper(ABC):
             Returns list of fits extensions.
         """
 
-    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_minimum_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0) -> fits.HDUList:
+    def run_starlight(self, cube_data: fits.HDUList, grid_parameters: GridParameters, pop_age_par: dict, sfr_age_par: dict, fc_par: dict, bb_par: dict, galaxy_distance: float, norm_factor: float, flux_unit: str, redshift: float, ret_mass_age_par: dict = None, keep_tmp: bool = False, timeout_mode: str = "none", timeout_minutes: float = None, timeout_minimum_minutes: float = None, timeout_window: int = 15, timeout_multiplier: float = 2.0, stellar_norm_light: bool = False) -> fits.HDUList:
         """
             Run starlight for the listed spectra.
 
@@ -148,6 +152,16 @@ class StarlightWrapper(ABC):
                                       average over in "adaptive" mode
                 - timeout_multiplier = multiplier applied to that rolling
                                       average in "adaptive" mode
+                - stellar_norm_light = light normalization of the light-weighted
+                                      mean age and metallicity (Mage_L, MZ_L).
+                                      False (default): weights are fractions of
+                                      the total light (SSPs + FC/BB), i.e. the
+                                      AGN components count as log t = 0, Z = 0.
+                                      True: weights are renormalized to the
+                                      stellar light only, so that
+                                      value_stellar = value_total / (1 - FC/100)
+                                      (FC = total AGN light fraction, FC + BB).
+                                      Only Mage_L and MZ_L are affected.
 
             A killed spaxel is left without a STARLIGHT output file, so it is
             picked up by the existing failed-spaxel handling (get_parameters()
@@ -164,6 +178,7 @@ class StarlightWrapper(ABC):
         self._timeout_minimum_minutes = timeout_minimum_minutes
         self._timeout_window = max(1, int(timeout_window or 15))
         self._timeout_multiplier = float(timeout_multiplier or 2.0)
+        self._stellar_norm_light = bool(stellar_norm_light)
 
         # Set specific cube parameters
         self._filepath = Path(cube_data.filename()) if cube_data.filename() else Path("NONE")
@@ -611,6 +626,10 @@ class StarlightGeneric(StarlightWrapper):
             self._add_returned_mass_data_to_popbins_hdu()
         self._add_other_data_to_popbins_hdu()
 
+        self._new_cards.append(fits.Card(keyword="LNORM",
+                                         value="STELLAR" if self._stellar_norm_light else "TOTAL",
+                                         comment="Light norm. of Mage_L/MZ_L: TOTAL or STELLAR"))
+
         name = "PopBins"
         summary = "Synthesis Parameters & Binned Population Vectors"
         self._add_hdu(name, summary, self._new_cards, self._new_data)
@@ -754,8 +773,10 @@ class StarlightGeneric(StarlightWrapper):
                                 card_comment="Optical extinction",
                                 data_matrix=self._property_matrix(lambda x: x.av_min))
 
+        light_norm = "stellar light" if self._stellar_norm_light else "total light"
+
         self._add_card_and_data(card_name="Mage_L",
-                                card_comment="Mean age light weigthed",
+                                card_comment=f"Mean age light weighted ({light_norm})",
                                 data_matrix=self._property_matrix(lambda x: self._mean_by_light(x, np.log10(x.age_j))))
 
         self._add_card_and_data(card_name="Mage_M",
@@ -763,7 +784,7 @@ class StarlightGeneric(StarlightWrapper):
                                 data_matrix=self._property_matrix(lambda x: self._mean_by_mass(x, np.log10(x.age_j))))
 
         self._add_card_and_data(card_name="MZ_L",
-                                card_comment="Mean metalicity light weigthed",
+                                card_comment=f"Mean metalicity light weighted ({light_norm})",
                                 data_matrix=self._property_matrix(lambda x: self._mean_by_light(x, x.z_j)))
 
         self._add_card_and_data(card_name="MZ_M",
@@ -862,6 +883,16 @@ class StarlightGeneric(StarlightWrapper):
         valid_age = sl_out.age_j > 0.
 
         sum_of_x = np.sum(sl_out.x_j)
+
+        if self._stellar_norm_light:
+            # Normalize by the stellar light only. age_j > 0 alone does not
+            # exclude the AGN components (some bases give FC/BB age = 1 yr),
+            # so drop them by name, as in _pop_by_light.
+            exclude_bb = np.array([not (j.lower().startswith("agn_bb") or j.lower().startswith("bb")) for j in sl_out.component_j], dtype=bool)
+            exclude_fc = np.array([not (j.lower().startswith("agn_fc") or j.lower().startswith("power") or j.lower().startswith("pl_")) for j in sl_out.component_j], dtype=bool)
+            valid_age = valid_age * exclude_bb * exclude_fc
+            sum_of_x = np.sum(sl_out.x_j[valid_age])
+
         if sum_of_x <= 0.:
             return 0.
 
